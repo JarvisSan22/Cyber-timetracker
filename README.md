@@ -69,7 +69,7 @@ A Pi 3 (1 GB RAM) runs the app comfortably. A Pi 4 or 5 works the same way.
 
 ```bash
 sudo apt install -y git
-git clone <your-repo-url> ~/cyber-tracker
+git clone https://github.com/JarvisSan22/Cyber-timetracker.git ~/cyber-tracker
 cd ~/cyber-tracker
 ./scripts/install-pi.sh
 ```
@@ -91,7 +91,7 @@ On your phone, open that address and use "Add to Home Screen" to install it as a
 ```bash
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker "$USER"        # then log out and back in
-git clone <your-repo-url> ~/cyber-tracker && cd ~/cyber-tracker
+git clone https://github.com/JarvisSan22/Cyber-timetracker.git ~/cyber-tracker && cd ~/cyber-tracker
 cp .env.example .env                   # set PUID/PGID to the output of `id -u` / `id -g`
 mkdir -p data
 docker compose up -d --build
