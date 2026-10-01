@@ -1,0 +1,25 @@
+<div class="session-row" id="session-{{ v.session.id }}">
+  <div class="session-main">
+    <div class="session-top">
+      <span class="session-title">{{ v.session.title }}</span>
+      <span class="session-dur">{{ v.seconds|dur }}</span>
+    </div>
+    <div class="session-meta">
+      {{ v.start_local|hm }}–{{ v.end_local|hm }}
+      {% if v.paused %}<span class="paused-time">Paused time: {{ v.paused|paused }}</span>{% endif %}
+      {% if v.session.created_via == "manual" %}<span class="muted">· manual</span>{% endif %}
+    </div>
+    {% if v.tags %}
+    <div class="session-tags">{% for t in v.tags %}<span class="pill" style="--c: {{ t.color }}">{{ t.name }}</span>{% endfor %}</div>
+    {% endif %}
+    {% if v.session.note %}<div class="session-note muted">{{ v.session.note }}</div>{% endif %}
+  </div>
+  <div class="session-actions">
+    <button class="icon-btn" title="Restart" aria-label="Restart"
+            hx-post="/ui/sessions/{{ v.session.id }}/restart" hx-target="#running-timers" hx-swap="outerHTML">▶</button>
+    <button class="icon-btn" title="Edit" aria-label="Edit"
+            hx-get="/ui/sessions/{{ v.session.id }}/edit" hx-target="#modal">✎</button>
+    <button class="icon-btn danger" title="Delete" aria-label="Delete"
+            hx-post="/ui/sessions/{{ v.session.id }}/delete" hx-swap="none">×</button>
+  </div>
+</div>

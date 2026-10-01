@@ -1,0 +1,24 @@
+<section id="running-timers" class="running" hx-get="/ui/running" hx-trigger="every 30s, running-changed from:body" hx-swap="outerHTML">
+  {% for v in running %}
+  <article class="timer-card {% if v.is_paused %}is-paused{% endif %}" style="--c: {{ v.project.color }}"
+           x-data="timerCard({{ v.seconds }}, {{ 'true' if v.is_paused else 'false' }})" :data-secs="secs" data-secs="{{ v.seconds }}">
+    <div class="timer-info">
+      <div class="timer-title"><span class="dot" style="--c: {{ v.project.color }}"></span>{{ v.session.title }}</div>
+      <div class="timer-meta">
+        {{ v.project.name }} · since {{ v.start_local|hm }}
+        {% for t in v.tags %}<span class="pill" style="--c: {{ t.color }}">{{ t.name }}</span>{% endfor %}
+      </div>
+      <p class="warn" x-show="secs > 21600" {% if not v.long_running %}x-cloak{% endif %}>⚠ Running over 6 hours. Left on by mistake?</p>
+    </div>
+    <div class="timer-clock" x-text="clock">{{ v.seconds|clock }}</div>
+    <div class="timer-actions">
+      {% if v.is_paused %}
+      <button class="secondary" hx-post="/ui/sessions/{{ v.session.id }}/resume" hx-target="#running-timers" hx-swap="outerHTML">▶ Resume</button>
+      {% else %}
+      <button class="secondary" hx-post="/ui/sessions/{{ v.session.id }}/pause" hx-target="#running-timers" hx-swap="outerHTML">❚❚ Pause</button>
+      {% endif %}
+      <button class="stop-btn" hx-post="/ui/sessions/{{ v.session.id }}/stop" hx-target="#running-timers" hx-swap="outerHTML">■ Stop</button>
+    </div>
+  </article>
+  {% endfor %}
+</section>

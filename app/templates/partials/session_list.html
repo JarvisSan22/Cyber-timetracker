@@ -1,0 +1,17 @@
+<section id="session-list" class="session-list"
+         hx-get="/ui/sessions?project_id={{ project.id }}&limit={{ limit }}" hx-trigger="sessions-changed from:body" hx-swap="outerHTML">
+  {% for g in groups %}
+  <div class="day">
+    <div class="day-head"><span>{{ day_label(g.day, today) }}</span><span class="day-total">{{ g.total|dur }}</span></div>
+    {% for v in g.sessions %}
+    {% include "partials/session_row.html" %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted empty-list">No sessions yet. Pick a tag and press Start.</p>
+  {% endfor %}
+  {% if has_more %}
+  <button class="secondary outline load-more" hx-get="/ui/sessions?project_id={{ project.id }}&limit={{ limit + 50 }}"
+          hx-target="#session-list" hx-swap="outerHTML">Show older sessions</button>
+  {% endif %}
+</section>

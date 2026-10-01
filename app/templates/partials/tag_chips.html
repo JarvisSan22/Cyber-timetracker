@@ -1,0 +1,19 @@
+<div id="tag-chips" class="tag-chips" x-data="{ adding: false }">
+  <fieldset class="chips" aria-label="Tags">
+    {% for t in tags %}
+    <label class="chip" style="--c: {{ t.color }}">
+      <input type="checkbox" name="tag_ids" value="{{ t.id }}" {% if t.id in checked_tag_ids %}checked{% endif %}>
+      <span>{{ t.name }}</span>
+    </label>
+    {% endfor %}
+    <a class="chip chip-ghost" href="/projects#project-{{ project.id }}" title="Edit tags" aria-label="Edit tags">✎</a>
+    <button type="button" class="chip chip-ghost" x-show="!adding" @click="adding = true; $nextTick(() => $refs.newTag.focus())">＋ New tag</button>
+  </fieldset>
+  <div class="new-tag" x-show="adding" x-cloak>
+    <input type="text" name="new_tag" x-ref="newTag" placeholder="New tag name" aria-label="New tag name"
+           @keydown.enter.prevent="$refs.addTag.click()" @keydown.escape="adding = false">
+    <button type="button" x-ref="addTag" class="secondary"
+            hx-post="/ui/projects/{{ project.id }}/tags" hx-include="closest form" hx-target="#tag-chips" hx-swap="outerHTML">Add</button>
+  </div>
+  {% if tag_error %}<p class="msg msg-error">{{ tag_error }}</p>{% endif %}
+</div>

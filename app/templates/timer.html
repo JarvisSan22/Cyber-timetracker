@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Timer · Hobby Tracker{% endblock %}
+
+{% block content %}
+{% if not project %}
+<article class="empty">
+  <p>No projects yet.</p>
+  <a role="button" href="/projects#new">Create your first project</a>
+</article>
+{% else %}
+<section class="quick-start">
+  <form id="start-form" hx-post="/ui/sessions/start" hx-target="#running-timers" hx-swap="outerHTML"
+        hx-on::after-request="if (event.detail.successful && event.detail.elt === this) { this.reset(); }">
+    <input type="hidden" name="project_id" value="{{ project.id }}">
+    <input type="text" name="title" placeholder="What are you working on? (optional)" aria-label="Title" autocomplete="off">
+    {% include "partials/tag_chips.html" %}
+    <button type="submit" class="start-btn">▶ Start</button>
+  </form>
+</section>
+
+{% include "partials/running_timers.html" %}
+
+<details class="past-session">
+  <summary>＋ Add past session</summary>
+  <form hx-post="/ui/sessions" hx-target="#past-result"
+        hx-on::after-request="if (event.detail.successful && event.detail.xhr.getResponseHeader('HX-Trigger')) { this.reset(); }">
+    <input type="hidden" name="project_id" value="{{ project.id }}">
+    <input type="text" name="title" placeholder="Title (optional)" aria-label="Title">
+    <div class="grid-2">
+      <label>Start <input type="datetime-local" name="started_at" required
+             value="{{ past_start }}"></label>
+      <label>End <input type="datetime-local" name="ended_at"></label>
+    </div>
+    <label>or duration (minutes) <input type="number" name="duration_min" min="1" step="1" inputmode="numeric" placeholder="e.g. 45"></label>
+    <fieldset class="chips">
+      {% for t in tags %}
+      <label class="chip" style="--c: {{ t.color }}"><input type="checkbox" name="tag_ids" value="{{ t.id }}"><span>{{ t.name }}</span></label>
+      {% endfor %}
+    </fieldset>
+    <input type="text" name="note" placeholder="Note (optional)" aria-label="Note">
+    <button type="submit" class="secondary">Add session</button>
+    <div id="past-result"></div>
+  </form>
+</details>
+
+{% include "partials/session_list.html" %}
+{% endif %}
+{% endblock %}
+
+{# Fragments rendered on their own by routes/htmx.py (not part of the full page). #}
+
+{% block edit_dialog %}
+<dialog open class="edit-dialog" x-data @keydown.escape.window="$el.remove()">
+  <article>
+    <header>
+      <button type="button" aria-label="Close" rel="prev" @click="$root.remove()"></button>
+      <strong>Edit session</strong>
+    </header>
+    <form hx-post="/ui/sessions/{{ v.session.id }}" hx-target="#modal">
+      {% if error %}<p class="msg msg-error">{{ error }}</p>{% endif %}
+      <label>Title <input type="text" name="title" value="{{ v.session.title }}"></label>
+      <div class="grid-2">
+        <label>Start <input type="datetime-local" name="started_at" value="{{ v.start_local.strftime('%Y-%m-%dT%H:%M') }}"></label>
+        {% if v.end_local %}
+        <label>End <input type="datetime-local" name="ended_at" value="{{ v.end_local.strftime('%Y-%m-%dT%H:%M') }}"></label>
+        {% else %}
+        <label>End <input type="text" value="running" disabled></label>
+        {% endif %}
+      </div>
+      <label>Paused (minutes) <input type="number" name="paused_min" min="0" step="0.1" value="{{ ((v.session.paused_sec or 0) / 60)|round(1) }}"></label>
+      <fieldset class="chips">
+        {% for t in all_tags %}
+        <label class="chip" style="--c: {{ t.color }}"><input type="checkbox" name="tag_ids" value="{{ t.id }}" {% if t.id in checked %}checked{% endif %}><span>{{ t.name }}</span></label>
+        {% endfor %}
+      </fieldset>
+      <label>Note <textarea name="note" rows="2">{{ v.session.note }}</textarea></label>
+      <footer class="dialog-actions">
+        <button type="button" class="secondary" @click="$root.remove()">Cancel</button>
+        <button type="submit">Save</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{% endblock %}
+
+{% block undo_toast %}
+<div id="toast" hx-swap-oob="true">
+  <div class="toast" x-data x-init="setTimeout(() => $el.remove(), 8000)">
+    <span>Deleted “{{ deleted_title }}”</span>
+    <form hx-post="/ui/sessions/restore" hx-swap="none">
+      <input type="hidden" name="data" value="{{ snapshot }}">
+      <button type="submit" class="link-btn">Undo</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
