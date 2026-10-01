@@ -1,0 +1,13 @@
+services:
+  tracker:
+    build: .
+    container_name: hobby-tracker
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      - TZ=Asia/Tokyo
+      # Set to 1 to add demo projects and sessions on first run (empty database only).
+      - SEED_DEMO=${SEED_DEMO:-0}
+    restart: unless-stopped
