@@ -46,3 +46,12 @@ DESIGN.md has no "Build plan" section, so the milestones were defined here, foll
 - **Heatmap** shows the last 53 weeks, weeks starting Monday, with fixed levels (<15 min, <45 min, <90 min, more) and the project color. On phones it opens scrolled to the newest weeks.
 - **Daily goal line** shows on the day-based charts when the selected project has a goal.
 - **Local dev port**: on the build machine 127.0.0.1:8080 was already taken by another service, so local checks bound uvicorn to 127.0.0.2:8080, and docker-compose's host port is overridable with `TRACKER_PORT` (default 8080).
+- **Ideas service functions** live in `services/projects.py` so the services folder keeps the outline's four modules and routes never touch SQL.
+- **Projects page** handles rename, recolor, type, daily goal, archive/unarchive, and tag add/rename/recolor/delete. Projects are never hard-deleted.
+- **Import** replaces all data with the JSON export in one transaction (with a confirm prompt in the UI). Partial merges are not supported.
+- **CSV export** is one row per session with local times; JSON export is the full database and is what import reads.
+- **`/api/backup`** uses SQLite's online backup API, so the copy is consistent while the app writes.
+- **API extras**: the full table from DESIGN.md is implemented. `PATCH /api/ideas` takes the idea id in the body because the table lists no `/api/ideas/{id}` path. Errors: 400 bad input, 404 unknown id, 409 conflicts (pausing a stopped timer, deleting a used tag, duplicate tag name).
+- **Service worker** caches only `/static/` files (stale-while-revalidate); pages and `/ui/` fragments always go to the server so timers stay live.
+- **PWA icons** are generated PNGs (192, 512) plus an SVG stopwatch.
+- **FastAPI `/docs`** still loads Swagger UI from a CDN, as FastAPI does by default. It is a developer tool, not one of the app's pages, so it was left as is; the app pages load nothing from a CDN.

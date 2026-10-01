@@ -137,3 +137,125 @@ def test_ui_edit_keeps_untouched_times_of_short_session(client, seeded):
     assert r.status_code == 200 and "msg-error" not in r.text
     assert sessions_in_db()[s.id].title == "Quick edit"
     assert timers.duration(sessions_in_db()[s.id]) == 30
+
+
+# --- Projects, Ideas, Settings pages and their /ui/ fragments ---
+
+
+@pytest.mark.parametrize("path", ["/", "/stats", "/projects", "/ideas", "/ideas?status=open", "/settings"])
+def test_every_page_returns_200(client, seeded, path):
+    r = client.get(path)
+    assert r.status_code == 200 and r.text.lstrip().lower().startswith("<!doctype html>")
+
+
+@pytest.mark.parametrize("path", ["/sw.js", "/static/manifest.webmanifest", "/static/icons/icon-192.png", "/static/vendor/htmx.min.js"])
+def test_pwa_and_vendor_files(client, path):
+    assert client.get(path).status_code == 200
+
+
+def test_ui_projects_and_tags(client, seeded):
+    pid = seeded["project_id"]
+    r = client.post("/ui/projects", data={"name": "Painting", "type": "art", "color": "#a855f7", "daily_goal_min": "30"})
+    assert r.status_code == 200 and "Created" in r.text and "Sketching" in r.text and 'id="project-list"' in r.text
+    assert "msg-error" in client.post("/ui/projects", data={"name": " "}).text
+
+    r = client.post(f"/ui/projects/{pid}", data={"name": "Chinese", "type": "language", "color": "#ff0000", "daily_goal_min": ""})
+    assert r.status_code == 200 and "Saved “Chinese”" in r.text
+    r = client.post(f"/ui/projects/{pid}/archive", data={"archived": "1"})
+    assert r.status_code == 200 and "(archived)" in r.text
+    assert "(archived)" not in client.post(f"/ui/projects/{pid}/archive", data={"archived": "0"}).text
+
+    r = client.post(f"/ui/projects/{pid}/tags/manage", data={"new_tag": "Podcasts"})
+    assert r.status_code == 200 and "Podcasts" in r.text
+    used_tag, free_tag = seeded["tag_ids"][0], seeded["tag_ids"][9]
+    assert client.post(f"/ui/tags/{free_tag}", data={"name": "Essays", "color": "#00ff00"}).status_code == 200
+    assert "Deleted tag" in client.post(f"/ui/tags/{free_tag}/delete").text
+    assert "cannot be deleted" in client.post(f"/ui/tags/{used_tag}/delete").text
+
+
+def test_ui_ideas(client):
+    r = client.post("/ui/ideas", data={"text": "AnkiConnect import"})
+    assert r.status_code == 200 and "AnkiConnect import" in r.text
+    idea_id = client.get("/api/ideas").json()[0]["id"]
+    r = client.post(f"/ui/ideas/{idea_id}", data={"status": "planned", "status_filter": ""})
+    assert r.status_code == 200 and client.get("/api/ideas").json()[0]["status"] == "planned"
+    assert "msg-error" in client.post(f"/ui/ideas/{idea_id}", data={"status": "nope"}).text
+    assert client.post(f"/ui/ideas/{idea_id}/delete", data={"status_filter": ""}).status_code == 200
+    assert client.get("/api/ideas").json() == []
+
+
+def test_ui_settings_change_timezone(client):
+    r = client.post("/ui/settings", data={"timezone": "Europe/Berlin", "day_start_hour": "4", "week_start": "monday"})
+    assert r.status_code == 200 and "Saved." in r.text
+    assert client.get("/api/settings").json() == {"timezone": "Europe/Berlin", "day_start_hour": 4, "week_start": "monday"}
+    assert "msg-error" in client.post("/ui/settings", data={"timezone": "Mars/Base", "day_start_hour": "0"}).text
+
+
+def test_ui_import_roundtrip(client, seeded):
+    exported = client.get("/api/export?format=json")
+    assert exported.status_code == 200
+    client.post("/ui/sessions/{done_id}/delete".format(**seeded))
+    r = client.post("/ui/import", files={"file": ("export.json", exported.content, "application/json")})
+    assert r.status_code == 200 and "Imported 1 projects" in r.text
+    assert seeded["done_id"] in sessions_in_db()
+    assert "msg-error" in client.post("/ui/import", files={"file": ("x.json", b"{}", "application/json")}).text
+
+
+# --- JSON API ---
+
+
+def test_api_timer_lifecycle(client, seeded):
+    r = client.post("/api/sessions/start", json={"project_id": seeded["project_id"], "title": "API timer"})
+    assert r.status_code == 201 and r.json()["running"]
+    sid = r.json()["id"]
+    assert client.post(f"/api/sessions/{sid}/pause").json()["paused"]
+    assert not client.post(f"/api/sessions/{sid}/resume").json()["paused"]
+    assert len(client.get("/api/sessions/running").json()) == 2
+    stopped = client.post(f"/api/sessions/{sid}/stop").json()
+    assert not stopped["running"] and stopped["ended_at"]
+    assert client.post(f"/api/sessions/{sid}/restart").status_code == 201
+    assert client.post("/api/sessions/999/pause").status_code == 404
+    assert client.post(f"/api/sessions/{sid}/pause").status_code == 409
+
+
+def test_api_crud(client, seeded):
+    r = client.post("/api/projects", json={"name": "Work coding", "type": "coding"})
+    assert r.status_code == 201
+    new_pid = r.json()["id"]
+    assert len(client.get(f"/api/projects/{new_pid}/tags").json()) == 5
+    assert client.patch(f"/api/projects/{new_pid}", json={"daily_goal_min": 45}).json()["daily_goal_min"] == 45
+    assert client.delete(f"/api/projects/{new_pid}").json()["archived"] is True
+    assert len(client.get("/api/projects").json()) == 1 and len(client.get("/api/projects?archived=true").json()) == 2
+
+    tag = client.post(f"/api/projects/{new_pid}/tags", json={"name": "Infra"}).json()
+    assert client.patch(f"/api/tags/{tag['id']}", json={"name": "Infra ops"}).json()["name"] == "Infra ops"
+    assert client.delete(f"/api/tags/{tag['id']}").status_code == 204
+    assert client.delete(f"/api/tags/{seeded['tag_ids'][0]}").status_code == 409
+
+    r = client.post("/api/sessions", json={"project_id": seeded["project_id"], "title": "Manual",
+                                           "started_at": "2026-09-01T10:00:00+09:00", "ended_at": "2026-09-01T11:30:00+09:00"})
+    assert r.status_code == 201 and r.json()["duration_sec"] == 5400
+    sid = r.json()["id"]
+    assert client.patch(f"/api/sessions/{sid}", json={"title": "Renamed"}).json()["title"] == "Renamed"
+    assert len(client.get(f"/api/sessions?project_id={seeded['project_id']}&from=2026-09-01T00:00:00%2B09:00&to=2026-09-02T00:00:00%2B09:00").json()) == 1
+    assert len(client.get(f"/api/sessions?tag_id={seeded['tag_ids'][0]}").json()) == 1
+    assert client.delete(f"/api/sessions/{sid}").status_code == 204
+
+    idea = client.post("/api/ideas", json={"text": "Heatmap colors"}).json()
+    assert client.patch("/api/ideas", json={"id": idea["id"], "status": "done"}).json()["status"] == "done"
+    assert client.put("/api/settings", json={"timezone": "UTC", "day_start_hour": 0, "week_start": "monday"}).status_code == 200
+
+
+def test_api_stats_export_backup(client, seeded):
+    st = client.get(f"/api/stats?project_id={seeded['project_id']}&range=7d").json()
+    assert st["sessions"] == 2 and len(st["series"]["minutes"]) == 7 and st["per_tag"]
+
+    csv_text = client.get("/api/export?format=csv").text
+    assert csv_text.startswith("id,project,title") and "Podcast" in csv_text
+
+    r = client.get("/api/backup")
+    assert r.status_code == 200 and r.content[:16] == b"SQLite format 3\x00"
+
+    data = client.get("/api/export").json()
+    assert client.post("/api/import", json=data).json()["imported"]["sessions"] == 2
+    assert client.post("/api/import", json={"app": "other"}).status_code == 400

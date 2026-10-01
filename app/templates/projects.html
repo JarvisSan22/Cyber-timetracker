@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Projects · Hobby Tracker{% endblock %}
+{% block heading %}Projects{% endblock %}
+
+{% block content %}
+<article class="item-card" id="new">
+  <h3>New project</h3>
+  <form hx-post="/ui/projects" hx-target="#project-list" hx-swap="outerHTML"
+        hx-on::after-request="if (event.detail.successful && !event.detail.xhr.responseText.includes('msg-error')) this.reset()">
+    <div class="inline-form">
+      <input type="color" name="color" value="{{ palette[all_projects|length % palette|length] }}" aria-label="Color">
+      <input type="text" name="name" placeholder="e.g. Learning Japanese" aria-label="Project name" required>
+    </div>
+    <div class="inline-form" style="margin-top: 0.5rem">
+      <select name="type" aria-label="Type">
+        {% for t in project_types %}<option value="{{ t }}">{{ t|capitalize }}{% if t != "other" %} (starter tags){% endif %}</option>{% endfor %}
+      </select>
+      <input type="number" name="daily_goal_min" min="0" step="5" placeholder="min/day" aria-label="Daily goal in minutes">
+      <button type="submit">Create</button>
+    </div>
+  </form>
+</article>
+
+{% block project_list %}
+<section id="project-list" class="card-list" style="margin-top: 1rem">
+  {% if message %}<p class="msg msg-ok">{{ message }}</p>{% endif %}
+  {% if error %}<p class="msg msg-error">{{ error }}</p>{% endif %}
+  {% for p in all_projects %}
+  <article class="item-card {% if p.archived %}archived{% endif %}" id="project-{{ p.id }}">
+    <h3><span class="dot" style="--c: {{ p.color }}"></span>{{ p.name }}{% if p.archived %}&nbsp;<small class="muted">(archived)</small>{% endif %}</h3>
+    <form class="inline-form" hx-post="/ui/projects/{{ p.id }}" hx-target="#project-list" hx-swap="outerHTML">
+      <input type="color" name="color" value="{{ p.color }}" aria-label="Color">
+      <input type="text" name="name" value="{{ p.name }}" aria-label="Name" required>
+      <select name="type" aria-label="Type">
+        {% for t in project_types %}<option value="{{ t }}" {% if t == p.type %}selected{% endif %}>{{ t|capitalize }}</option>{% endfor %}
+      </select>
+      <input type="number" name="daily_goal_min" min="0" step="5" value="{{ p.daily_goal_min or '' }}" placeholder="min/day" aria-label="Daily goal in minutes">
+      <button type="submit" class="secondary">Save</button>
+      <button type="button" class="outline secondary" hx-post="/ui/projects/{{ p.id }}/archive" hx-vals='{"archived": "{{ 0 if p.archived else 1 }}"}'
+              hx-target="#project-list" hx-swap="outerHTML">{{ "Unarchive" if p.archived else "Archive" }}</button>
+    </form>
+
+    <details {% if open_project == p.id %}open{% endif %}>
+      <summary>Tags ({{ project_tags[p.id]|length }})</summary>
+      <div class="tag-edit-list">
+        {% for t in project_tags[p.id] %}
+        <form class="inline-form" hx-post="/ui/tags/{{ t.id }}" hx-target="#project-list" hx-swap="outerHTML">
+          <input type="color" name="color" value="{{ t.color }}" aria-label="Tag color">
+          <input type="text" name="name" value="{{ t.name }}" aria-label="Tag name" required>
+          <button type="submit" class="secondary">Save</button>
+          {% if tag_usage[t.id] %}
+          <small class="muted" title="Tags in use cannot be deleted">{{ tag_usage[t.id] }} sessions</small>
+          {% else %}
+          <button type="button" class="outline secondary icon-btn danger" title="Delete tag" aria-label="Delete tag {{ t.name }}"
+                  hx-post="/ui/tags/{{ t.id }}/delete" hx-target="#project-list" hx-swap="outerHTML">×</button>
+          {% endif %}
+        </form>
+        {% endfor %}
+        <form class="inline-form" hx-post="/ui/projects/{{ p.id }}/tags/manage" hx-target="#project-list" hx-swap="outerHTML">
+          <input type="text" name="new_tag" placeholder="New tag" aria-label="New tag name" required>
+          <button type="submit" class="secondary">＋ Add tag</button>
+        </form>
+      </div>
+    </details>
+  </article>
+  {% else %}
+  <p class="muted">No projects yet. Create one above.</p>
+  {% endfor %}
+</section>
+{% endblock %}
+
+{% endblock %}

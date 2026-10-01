@@ -1,6 +1,7 @@
 """Full HTML pages: /, /stats, /projects, /ideas, /settings. Also the Jinja setup shared with htmx.py."""
 
 from datetime import datetime, timedelta
+from zoneinfo import available_timezones
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse, HTMLResponse
@@ -9,7 +10,7 @@ from sqlmodel import Session as DBSession
 
 from app import config
 from app.db import get_session
-from app.models import Project
+from app.models import IDEA_STATUSES, PROJECT_TYPES, Project
 from app.services import projects as project_svc
 from app.services import stats as stats_svc
 from app.services import timers
@@ -123,6 +124,58 @@ def stats_page(request: Request, range: str = "30d", db: DBSession = Depends(get
     response = templates.TemplateResponse(request, "stats.html", ctx)
     remember_project(response, project, request.query_params.get("project"))
     return response
+
+
+def projects_context(db: DBSession, **extra) -> dict:
+    all_projects = project_svc.list_projects(db, include_archived=True)
+    tags = {p.id: project_svc.list_tags(db, p.id) for p in all_projects}
+    return {
+        "all_projects": all_projects,
+        "project_tags": tags,
+        "tag_usage": {t.id: project_svc.tag_usage(db, t.id) for ts in tags.values() for t in ts},
+        "project_types": PROJECT_TYPES,
+        "palette": project_svc.PALETTE,
+        "message": "",
+        "error": "",
+        "open_project": None,
+    } | extra
+
+
+def ideas_context(db: DBSession, status: str = "", **extra) -> dict:
+    return {
+        "ideas": project_svc.list_ideas(db, status or None),
+        "statuses": IDEA_STATUSES,
+        "status_filter": status if status in IDEA_STATUSES else "",
+        "error": "",
+    } | extra
+
+
+def settings_context(db: DBSession, **extra) -> dict:
+    return {
+        "settings": config.get_user_settings(db),
+        "timezones": sorted(available_timezones()),
+        "message": "",
+        "error": "",
+        "import_message": "",
+    } | extra
+
+
+@router.get("/projects", response_class=HTMLResponse)
+def projects_page(request: Request, db: DBSession = Depends(get_session)):
+    ctx = base_context(request, db, None, "projects") | projects_context(db)
+    return templates.TemplateResponse(request, "projects.html", ctx)
+
+
+@router.get("/ideas", response_class=HTMLResponse)
+def ideas_page(request: Request, status: str = "", db: DBSession = Depends(get_session)):
+    ctx = base_context(request, db, None, "ideas") | ideas_context(db, status)
+    return templates.TemplateResponse(request, "ideas.html", ctx)
+
+
+@router.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request, db: DBSession = Depends(get_session)):
+    ctx = base_context(request, db, None, "settings") | settings_context(db)
+    return templates.TemplateResponse(request, "settings.html", ctx)
 
 
 @router.get("/sw.js", include_in_schema=False)

@@ -217,7 +217,7 @@ button.chip { font-size: 0.9rem; }
 .inline-form input, .inline-form select, .inline-form button { margin: 0; width: auto; }
 .inline-form input[type="text"] { flex: 1 1 10rem; min-width: 0; }
 .inline-form input[type="color"] { width: 2.6rem; height: 2.4rem; padding: 0.15rem; flex: none; }
-.inline-form input[type="number"] { width: 6rem; }
+.inline-form input[type="number"] { width: 7rem; }
 .tag-edit-list { display: grid; gap: 0.4rem; margin: 0.6rem 0; }
 .idea-row { display: flex; gap: 0.6rem; align-items: center; justify-content: space-between; }
 .idea-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -225,3 +225,5 @@ button.chip { font-size: 0.9rem; }
 .idea-row select { width: auto; margin: 0; padding-top: 0.3rem; padding-bottom: 0.3rem; }
 .status-filter { display: flex; gap: 0.3rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
 h2.section { font-size: 1.05rem; margin: 1.4rem 0 0.6rem; }
+.item-card details { margin: 0.7rem 0 0; }
+.item-card details summary { color: var(--muted); }

@@ -3,7 +3,7 @@ services:
     build: .
     container_name: hobby-tracker
     ports:
-      - "8080:8080"
+      - "${TRACKER_PORT:-8080}:8080"
     volumes:
       - ./data:/data
     environment:

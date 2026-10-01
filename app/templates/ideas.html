@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Ideas · Hobby Tracker{% endblock %}
+{% block heading %}Ideas{% endblock %}
+
+{% block content %}
+<p class="muted">Features you want to build next. The reference app's feedback loop, pointed at yourself.</p>
+<form class="inline-form" hx-post="/ui/ideas" hx-target="#idea-list" hx-swap="outerHTML"
+      hx-on::after-request="if (event.detail.successful && !event.detail.xhr.responseText.includes('msg-error')) this.reset()">
+  <input type="text" name="text" placeholder="e.g. AnkiConnect import of review time" aria-label="New idea" required>
+  <button type="submit">Add</button>
+</form>
+
+<nav class="status-filter range-switch" aria-label="Filter">
+  <a href="/ideas" {% if not status_filter %}aria-current="true"{% endif %}>All</a>
+  {% for s in statuses %}<a href="/ideas?status={{ s }}" {% if s == status_filter %}aria-current="true"{% endif %}>{{ s|capitalize }}</a>{% endfor %}
+</nav>
+
+{% block idea_list %}
+<section id="idea-list" class="card-list">
+  {% if error %}<p class="msg msg-error">{{ error }}</p>{% endif %}
+  {% for idea in ideas %}
+  <article class="item-card idea-row {{ idea.status }}">
+    <span class="idea-text">{{ idea.text }}</span>
+    <select name="status" aria-label="Status" hx-post="/ui/ideas/{{ idea.id }}" hx-trigger="change"
+            hx-vals='{"status_filter": "{{ status_filter }}"}' hx-target="#idea-list" hx-swap="outerHTML">
+      {% for s in statuses %}<option value="{{ s }}" {% if s == idea.status %}selected{% endif %}>{{ s|capitalize }}</option>{% endfor %}
+    </select>
+    <button class="icon-btn danger" title="Delete" aria-label="Delete idea" hx-post="/ui/ideas/{{ idea.id }}/delete"
+            hx-vals='{"status_filter": "{{ status_filter }}"}' hx-confirm="Delete this idea?" hx-target="#idea-list" hx-swap="outerHTML">×</button>
+  </article>
+  {% else %}
+  <p class="muted">No ideas {% if status_filter %}with status “{{ status_filter }}”{% else %}yet{% endif %}.</p>
+  {% endfor %}
+</section>
+{% endblock %}
+{% endblock %}

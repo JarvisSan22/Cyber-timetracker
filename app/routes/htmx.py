@@ -7,14 +7,24 @@ Mutations that affect another part of the page also send an HX-Trigger event
 import json
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, Response
 from sqlmodel import Session as DBSession
 
 from app import config
 from app.db import get_session
 from app.models import Project
-from app.routes.pages import SESSION_PAGE, base_context, render_block, templates, timer_context
+from app.routes.pages import (
+    SESSION_PAGE,
+    base_context,
+    ideas_context,
+    projects_context,
+    render_block,
+    settings_context,
+    templates,
+    timer_context,
+)
+from app.services import backup
 from app.services import projects as project_svc
 from app.services import timers
 
@@ -241,3 +251,139 @@ def add_tag(
     except ValueError as e:
         error = str(e)
     return _fragment(request, db, "tag_chips", project, checked_tag_ids=checked, tag_error=error)
+
+
+# --- Projects page ---
+
+
+def _project_list(db: DBSession, **extra) -> HTMLResponse:
+    return HTMLResponse(render_block("projects.html", "project_list", projects_context(db, **extra)))
+
+
+def _goal(value: str) -> int | None:
+    value = (value or "").strip()
+    return max(0, int(float(value))) if value else None
+
+
+@router.post("/projects", response_class=HTMLResponse)
+def create_project(
+    name: str = Form(""),
+    type: str = Form("other"),
+    color: str = Form(""),
+    daily_goal_min: str = Form(""),
+    db: DBSession = Depends(get_session),
+):
+    try:
+        p = project_svc.create_project(db, name, type, color, _goal(daily_goal_min))
+    except ValueError as e:
+        return _project_list(db, error=str(e))
+    return _project_list(db, message=f"Created “{p.name}”.", open_project=p.id)
+
+
+@router.post("/projects/{project_id}", response_class=HTMLResponse)
+def update_project(
+    project_id: int,
+    name: str = Form(""),
+    type: str = Form("other"),
+    color: str = Form(""),
+    daily_goal_min: str = Form(""),
+    db: DBSession = Depends(get_session),
+):
+    try:
+        p = project_svc.update_project(db, project_id, name=name, color=color, type=type, daily_goal_min=_goal(daily_goal_min))
+    except ValueError as e:
+        return _project_list(db, error=str(e))
+    return _project_list(db, message=f"Saved “{p.name}”.")
+
+
+@router.post("/projects/{project_id}/archive", response_class=HTMLResponse)
+def archive_project(project_id: int, archived: str = Form("1"), db: DBSession = Depends(get_session)):
+    p = project_svc.archive_project(db, project_id, archived == "1")
+    return _project_list(db, message=f"{'Archived' if p.archived else 'Restored'} “{p.name}”.")
+
+
+@router.post("/projects/{project_id}/tags/manage", response_class=HTMLResponse)
+def add_tag_on_projects_page(project_id: int, new_tag: str = Form(""), db: DBSession = Depends(get_session)):
+    try:
+        tag = project_svc.create_tag(db, project_id, new_tag)
+    except ValueError as e:
+        return _project_list(db, error=str(e), open_project=project_id)
+    return _project_list(db, message=f"Added tag “{tag.name}”.", open_project=project_id)
+
+
+@router.post("/tags/{tag_id}", response_class=HTMLResponse)
+def update_tag(tag_id: int, name: str = Form(""), color: str = Form(""), db: DBSession = Depends(get_session)):
+    tag = project_svc.update_tag(db, tag_id, name=name, color=color)
+    return _project_list(db, message=f"Saved tag “{tag.name}”.", open_project=tag.project_id)
+
+
+@router.post("/tags/{tag_id}/delete", response_class=HTMLResponse)
+def delete_tag(tag_id: int, db: DBSession = Depends(get_session)):
+    tag = project_svc.get_tag(db, tag_id)
+    name, project_id = tag.name, tag.project_id
+    try:
+        project_svc.delete_tag(db, tag_id)
+    except ValueError as e:
+        return _project_list(db, error=str(e), open_project=project_id)
+    return _project_list(db, message=f"Deleted tag “{name}”.", open_project=project_id)
+
+
+# --- Ideas page ---
+
+
+def _idea_list(db: DBSession, status_filter: str = "", **extra) -> HTMLResponse:
+    return HTMLResponse(render_block("ideas.html", "idea_list", ideas_context(db, status_filter, **extra)))
+
+
+@router.post("/ideas", response_class=HTMLResponse)
+def create_idea(text: str = Form(""), db: DBSession = Depends(get_session)):
+    try:
+        project_svc.create_idea(db, text)
+    except ValueError as e:
+        return _idea_list(db, error=str(e))
+    return _idea_list(db)
+
+
+@router.post("/ideas/{idea_id}", response_class=HTMLResponse)
+def update_idea(idea_id: int, status: str = Form(...), status_filter: str = Form(""), db: DBSession = Depends(get_session)):
+    try:
+        project_svc.update_idea(db, idea_id, status=status)
+    except ValueError as e:
+        return _idea_list(db, status_filter, error=str(e))
+    return _idea_list(db, status_filter)
+
+
+@router.post("/ideas/{idea_id}/delete", response_class=HTMLResponse)
+def delete_idea(idea_id: int, status_filter: str = Form(""), db: DBSession = Depends(get_session)):
+    project_svc.delete_idea(db, idea_id)
+    return _idea_list(db, status_filter)
+
+
+# --- Settings page ---
+
+
+@router.post("/settings", response_class=HTMLResponse)
+def save_settings(
+    timezone: str = Form(...),
+    day_start_hour: int = Form(0),
+    week_start: str = Form("monday"),
+    db: DBSession = Depends(get_session),
+):
+    try:
+        config.save_user_settings(db, timezone=timezone, day_start_hour=day_start_hour, week_start=week_start)
+        extra = {"message": "Saved."}
+    except ValueError as e:
+        extra = {"error": str(e)}
+    return HTMLResponse(render_block("settings.html", "settings_form", settings_context(db, **extra)))
+
+
+@router.post("/import", response_class=HTMLResponse)
+async def import_json(file: UploadFile = File(...), db: DBSession = Depends(get_session)):
+    try:
+        data = json.loads(await file.read())
+        counts = backup.import_json(db, data)
+    except (ValueError, UnicodeDecodeError) as e:
+        return _message(str(e), "error")
+    return _message(
+        f"Imported {counts['projects']} projects, {counts['tags']} tags, {counts['sessions']} sessions, {counts['ideas']} ideas."
+    )

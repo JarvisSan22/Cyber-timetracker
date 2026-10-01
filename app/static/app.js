@@ -115,6 +115,17 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".heatmap-wrap").forEach((el) => { el.scrollLeft = el.scrollWidth; });
 });
 
+// Projects page: /projects#project-3 (the Timer page's ✎ links) opens that project's tags.
+function openHashTarget() {
+  const target = location.hash.length > 1 && document.getElementById(location.hash.slice(1));
+  if (target) {
+    target.querySelector("details")?.setAttribute("open", "");
+    target.scrollIntoView({ block: "start" });
+  }
+}
+document.addEventListener("DOMContentLoaded", openHashTarget);
+window.addEventListener("hashchange", openHashTarget);
+
 // Register the service worker for PWA install / offline shell.
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

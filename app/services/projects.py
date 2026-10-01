@@ -4,9 +4,9 @@ import random
 from datetime import timedelta
 
 from sqlmodel import Session as DBSession
-from sqlmodel import col, func, select
+from sqlmodel import func, select
 
-from app.models import PROJECT_TYPES, Project, Session, SessionTag, Tag, utcnow
+from app.models import IDEA_STATUSES, PROJECT_TYPES, Idea, Project, Session, SessionTag, Tag, utcnow
 
 STARTER_TAGS: dict[str, list[str]] = {
     "language": ["Listening", "Watching", "YouTube", "Reading", "Manga", "Audiobook", "Anki", "Mining", "Speaking", "Writing"],
@@ -137,10 +137,15 @@ def create_tag(db: DBSession, project_id: int, name: str, color: str | None = No
     return tag
 
 
-def update_tag(db: DBSession, tag_id: int, *, name: str | None = None, color: str | None = None) -> Tag:
+def get_tag(db: DBSession, tag_id: int) -> Tag:
     tag = db.get(Tag, tag_id)
     if tag is None:
         raise NotFound(f"Tag {tag_id} not found")
+    return tag
+
+
+def update_tag(db: DBSession, tag_id: int, *, name: str | None = None, color: str | None = None) -> Tag:
+    tag = get_tag(db, tag_id)
     if name is not None and name.strip():
         tag.name = name.strip()
     if color is not None:
@@ -157,13 +162,57 @@ def tag_usage(db: DBSession, tag_id: int) -> int:
 
 def delete_tag(db: DBSession, tag_id: int) -> None:
     """Delete an unused tag. Tags already on sessions are kept so history stays intact."""
-    tag = db.get(Tag, tag_id)
-    if tag is None:
-        raise NotFound(f"Tag {tag_id} not found")
+    tag = get_tag(db, tag_id)
     used = tag_usage(db, tag_id)
     if used:
         raise Conflict(f"Tag {tag.name!r} is used by {used} session(s) and cannot be deleted")
     db.delete(tag)
+    db.commit()
+
+
+# --- Ideas (the built-in feature-request list; kept here to stay within the four service modules) ---
+
+
+def list_ideas(db: DBSession, status: str | None = None) -> list[Idea]:
+    query = select(Idea)
+    if status in IDEA_STATUSES:
+        query = query.where(Idea.status == status)
+    order = {"open": 0, "planned": 1, "done": 2}
+    return sorted(db.exec(query).all(), key=lambda i: (order.get(i.status, 9), -(i.id or 0)))
+
+
+def create_idea(db: DBSession, text: str, status: str = "open") -> Idea:
+    text = text.strip()
+    if not text:
+        raise ValueError("Idea text is required")
+    idea = Idea(text=text, status=status if status in IDEA_STATUSES else "open")
+    db.add(idea)
+    db.commit()
+    db.refresh(idea)
+    return idea
+
+
+def update_idea(db: DBSession, idea_id: int, *, text: str | None = None, status: str | None = None) -> Idea:
+    idea = db.get(Idea, idea_id)
+    if idea is None:
+        raise NotFound(f"Idea {idea_id} not found")
+    if text is not None and text.strip():
+        idea.text = text.strip()
+    if status is not None:
+        if status not in IDEA_STATUSES:
+            raise ValueError(f"Status must be one of {', '.join(IDEA_STATUSES)}")
+        idea.status = status
+    db.add(idea)
+    db.commit()
+    db.refresh(idea)
+    return idea
+
+
+def delete_idea(db: DBSession, idea_id: int) -> None:
+    idea = db.get(Idea, idea_id)
+    if idea is None:
+        raise NotFound(f"Idea {idea_id} not found")
+    db.delete(idea)
     db.commit()
 
 
@@ -213,6 +262,3 @@ def seed_demo_data(db: DBSession, *, seed: int = 7) -> bool:
     db.commit()
     return True
 
-
-def project_ids_with_sessions(db: DBSession) -> set[int]:
-    return set(db.exec(select(col(Session.project_id)).distinct()).all())

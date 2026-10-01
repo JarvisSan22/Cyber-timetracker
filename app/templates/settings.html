@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Settings · Hobby Tracker{% endblock %}
+{% block heading %}Settings{% endblock %}
+
+{% block content %}
+{% block settings_form %}
+<form id="settings-form" class="item-card" hx-post="/ui/settings" hx-target="this" hx-swap="outerHTML">
+  <label>Timezone
+    <select name="timezone">
+      {% for tz in timezones %}<option value="{{ tz }}" {% if tz == settings.timezone %}selected{% endif %}>{{ tz }}</option>{% endfor %}
+    </select>
+  </label>
+  <div class="grid-2">
+    <label>Day starts at
+      <select name="day_start_hour">
+        {% for h in range(0, 24) %}<option value="{{ h }}" {% if h == settings.day_start_hour %}selected{% endif %}>{{ "%02d:00"|format(h) }}</option>{% endfor %}
+      </select>
+      <small class="muted">Sessions started before this hour count for the previous day.</small>
+    </label>
+    <label>Week starts on
+      <select name="week_start">
+        {% for w in ("monday", "sunday") %}<option value="{{ w }}" {% if w == settings.week_start %}selected{% endif %}>{{ w|capitalize }}</option>{% endfor %}
+      </select>
+    </label>
+  </div>
+  <button type="submit">Save settings</button>
+  {% if message %}<p class="msg msg-ok">{{ message }}</p>{% endif %}
+  {% if error %}<p class="msg msg-error">{{ error }}</p>{% endif %}
+</form>
+{% endblock %}
+
+<h2 class="section">Export</h2>
+<div class="inline-form">
+  <a role="button" class="secondary" href="/api/export?format=csv" download>Sessions CSV</a>
+  <a role="button" class="secondary" href="/api/export?format=json" download>Full JSON</a>
+  <a role="button" class="secondary" href="/api/backup" download>Database backup (.db)</a>
+</div>
+
+<h2 class="section">Import</h2>
+<form class="item-card" hx-post="/ui/import" hx-encoding="multipart/form-data" hx-target="#import-result"
+      hx-confirm="Importing replaces ALL current data with the file's contents. Continue?">
+  <label>JSON export file <input type="file" name="file" accept="application/json,.json" required></label>
+  <button type="submit" class="secondary">Import and replace all data</button>
+  <div id="import-result"></div>
+</form>
+{% endblock %}
