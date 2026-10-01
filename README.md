@@ -16,10 +16,10 @@ Needs Python 3.13 (with [uv](https://docs.astral.sh/uv/), `uv venv --python 3.13
 ```bash
 uv venv --python 3.13 .venv
 uv pip install --python .venv -r requirements.txt
-SEED_DEMO=1 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8080
+SEED_DEMO=1 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8686
 ```
 
-Open http://127.0.0.1:8080. The database is created at `./data/tracker.db` and migrations run on startup. `SEED_DEMO=1` adds three demo projects with 40 sessions, but only when the database is empty. Leave it out for a clean start.
+Open http://127.0.0.1:8686. The database is created at `./data/tracker.db` and migrations run on startup. `SEED_DEMO=1` adds three demo projects with 40 sessions, but only when the database is empty. Leave it out for a clean start.
 
 Run the tests:
 
@@ -33,11 +33,11 @@ Run the tests:
 docker compose up -d --build
 ```
 
-Open http://localhost:8080. Data lives in `./data/tracker.db` on the host (the `./data:/data` volume), so it survives restarts and rebuilds. Useful variations:
+Open http://localhost:8686. Data lives in `./data/tracker.db` on the host (the `./data:/data` volume), so it survives restarts and rebuilds. Useful variations:
 
 ```bash
 SEED_DEMO=1 docker compose up -d --build       # demo data on first run
-TRACKER_PORT=18080 docker compose up -d --build # if port 8080 is taken on the host
+TRACKER_PORT=9686 docker compose up -d --build  # if port 8686 is taken on the host
 docker compose logs -f
 docker compose down
 ```
@@ -59,7 +59,7 @@ Target: Raspberry Pi 4 or 5 with 64-bit Raspberry Pi OS and Docker installed (`c
    ```
 
    To build on the laptop instead: `docker buildx build --platform linux/arm64 -t hobby-tracker:latest --load .`, then `docker save hobby-tracker:latest | ssh pi@<pi-ip> docker load`.
-3. Give the Pi a fixed IP in your router (DHCP reservation) and open `http://<pi-ip>:8080` on your phone. Use "Add to Home Screen" to install it as an app.
+3. Give the Pi a fixed IP in your router (DHCP reservation) and open `http://<pi-ip>:8686` on your phone. Use "Add to Home Screen" to install it as an app.
 4. Set up the nightly backup. `scripts/backup.sh` downloads a consistent copy of the database from `/api/backup` and keeps the newest 14 in `~/tracker-backups`. Run `crontab -e` on the Pi and add:
 
    ```cron
@@ -68,7 +68,7 @@ Target: Raspberry Pi 4 or 5 with 64-bit Raspberry Pi OS and Docker installed (`c
 
    Change `/home/pi` to your home directory, and run `mkdir -p ~/tracker-backups` once so the log file has a folder. Copy the backups off the Pi now and then; SD cards fail. To restore, stop the container, copy a backup to `./data/tracker.db`, delete any `tracker.db-wal` and `tracker.db-shm` next to it, and start the container again.
 
-**Security**: there is no login. Keep port 8080 closed on your router and only use the app on your home network. For access away from home, use Tailscale rather than port forwarding.
+**Security**: there is no login. Keep port 8686 closed on your router and only use the app on your home network. For access away from home, use Tailscale rather than port forwarding.
 
 ## Environment variables
 
@@ -79,8 +79,8 @@ Target: Raspberry Pi 4 or 5 with 64-bit Raspberry Pi OS and Docker installed (`c
 | `APP_TIMEZONE` | unset | app | Overrides `TZ` as the default timezone |
 | `DAY_START_HOUR` | `0` | app | Default hour (0–23) at which a new day starts, until changed in Settings |
 | `SEED_DEMO` | `0` | app | `1` adds demo projects and sessions when the database is empty |
-| `TRACKER_PORT` | `8080` | docker-compose | Host port mapped to the container's port 8080 |
-| `TRACKER_URL` | `http://localhost:8080` | backup.sh | Where the app is reachable |
+| `TRACKER_PORT` | `8686` | docker-compose | Host port mapped to the container's port 8686 |
+| `TRACKER_URL` | `http://localhost:8686` | backup.sh | Where the app is reachable |
 | `BACKUP_DIR` | `~/tracker-backups` | backup.sh | Where backups are saved |
 | `KEEP` | `14` | backup.sh | How many backups to keep |
 

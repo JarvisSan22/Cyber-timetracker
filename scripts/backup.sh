@@ -3,7 +3,7 @@
 # Cron (on the Pi):  15 3 * * * /home/pi/hobby-tracker/scripts/backup.sh >> /home/pi/tracker-backups/backup.log 2>&1
 set -eu
 
-URL="${TRACKER_URL:-http://localhost:8080}"
+URL="${TRACKER_URL:-http://localhost:8686}"
 DIR="${BACKUP_DIR:-$HOME/tracker-backups}"
 KEEP="${KEEP:-14}"
 

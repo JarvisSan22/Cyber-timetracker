@@ -45,7 +45,7 @@ DESIGN.md has no "Build plan" section, so the milestones were defined here, foll
 - **Time per tag** uses plain CSS bars instead of a second Chart.js chart (simpler, same look).
 - **Heatmap** shows the last 53 weeks, weeks starting Monday, with fixed levels (<15 min, <45 min, <90 min, more) and the project color. On phones it opens scrolled to the newest weeks.
 - **Daily goal line** shows on the day-based charts when the selected project has a goal.
-- **Local dev port**: on the build machine 127.0.0.1:8080 was already taken by another service, so local checks bound uvicorn to 127.0.0.2:8080, and docker-compose's host port is overridable with `TRACKER_PORT` (default 8080).
+- **Port 8686** instead of the doc's 8080: on the build machine 8080 was already taken by another service, so the app uses 8686 everywhere (uvicorn command, container port, healthcheck, compose, backup script). It is free there, and 8765 was avoided because AnkiConnect uses it. The compose host port can still be changed with `TRACKER_PORT`. DESIGN.md is unchanged and still says 8080.
 - **Ideas service functions** live in `services/projects.py` so the services folder keeps the outline's four modules and routes never touch SQL.
 - **Projects page** handles rename, recolor, type, daily goal, archive/unarchive, and tag add/rename/recolor/delete. Projects are never hard-deleted.
 - **Import** replaces all data with the JSON export in one transaction (with a confirm prompt in the UI). Partial merges are not supported.
