@@ -13,7 +13,7 @@
     <div class="timer-clock" x-text="clock">{{ v.seconds|clock }}</div>
     <div class="timer-actions">
       {% if v.is_paused %}
-      <button class="secondary" hx-post="/ui/sessions/{{ v.session.id }}/resume" hx-target="#running-timers" hx-swap="outerHTML">▶ Resume</button>
+      <button class="secondary" hx-post="/ui/sessions/{{ v.session.id }}/resume" hx-target="#running-timers" hx-swap="outerHTML">▶&#xFE0E; Resume</button>
       {% else %}
       <button class="secondary" hx-post="/ui/sessions/{{ v.session.id }}/pause" hx-target="#running-timers" hx-swap="outerHTML">❚❚ Pause</button>
       {% endif %}

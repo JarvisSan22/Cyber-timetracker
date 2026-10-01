@@ -114,3 +114,26 @@ def test_ui_add_past_session_and_tag(client, seeded):
 
 def test_unknown_session_is_404(client):
     assert client.post("/ui/sessions/999/stop").status_code == 404
+
+
+@pytest.mark.parametrize("query", ["", "?project=all", "?project={project_id}&range=7d", "?range=12m", "?range=all", "?range=nope"])
+def test_stats_page(client, seeded, query):
+    r = client.get("/stats" + query.format(**seeded))
+    assert r.status_code == 200
+    assert "Total time" in r.text and 'id="stats-data"' in r.text
+    assert "both count" in r.text  # overlap note
+
+
+def test_stats_page_without_projects(client):
+    assert client.get("/stats").status_code == 200
+
+
+def test_ui_edit_keeps_untouched_times_of_short_session(client, seeded):
+    with DBSession(get_engine()) as db:
+        s = timers.create_manual(db, seeded["project_id"], "Quick", utcnow() - timedelta(seconds=40), utcnow() - timedelta(seconds=10))
+        view = timers.views(db, [s], timers.ZoneInfo("Asia/Tokyo"))[0]
+        form = {"title": "Quick edit", "started_at": view.start_local.strftime("%Y-%m-%dT%H:%M"), "ended_at": view.end_local.strftime("%Y-%m-%dT%H:%M")}
+    r = client.post(f"/ui/sessions/{s.id}", data=form)
+    assert r.status_code == 200 and "msg-error" not in r.text
+    assert sessions_in_db()[s.id].title == "Quick edit"
+    assert timers.duration(sessions_in_db()[s.id]) == 30

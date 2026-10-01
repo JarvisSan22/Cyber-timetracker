@@ -20,6 +20,8 @@ from app.services import timers
 
 router = APIRouter(prefix="/ui", include_in_schema=False)
 
+LOCAL_INPUT_FORMAT = "%Y-%m-%dT%H:%M"  # <input type="datetime-local">
+
 
 def _fragment(request: Request, db: DBSession, name: str, project: Project | None = None, *, trigger=None, **extra):
     ctx = base_context(request, db, project, "timer") | timer_context(db, project) | extra
@@ -177,13 +179,21 @@ def save_edit(
     db: DBSession = Depends(get_session),
 ):
     tz = config.get_user_settings(db).tz
+    current = timers.views(db, [timers.get_session_or_404(db, session_id)], tz)[0]
+
+    def changed(value: str, shown: datetime | None) -> datetime | None:
+        # The form shows minutes only; an untouched field keeps the exact stored time.
+        if not value or (shown and value == shown.strftime(LOCAL_INPUT_FORMAT)):
+            return None
+        return _parse_local(value, tz)
+
     try:
         timers.update(
             db,
             session_id,
             title=title,
-            started_at=_parse_local(started_at, tz),
-            ended_at=_parse_local(ended_at, tz),
+            started_at=changed(started_at, current.start_local),
+            ended_at=changed(ended_at, current.end_local),
             paused_sec=int(float(paused_min) * 60) if paused_min.strip() else None,
             tag_ids=_ids(tag_ids),
             note=note,

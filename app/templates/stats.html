@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Statistics · Hobby Tracker{% endblock %}
+
+{% block content %}
+{% set pq = project.id if project else "all" %}
+
+<section class="stat-cards" aria-label="Summary">
+  <article class="stat-card">
+    <div class="stat-label">Total time</div>
+    <div class="stat-value">{{ st.total_sec|dur }}</div>
+    <div class="stat-sub">{{ (st.total_sec / 3600)|round(1) }} hours, all time</div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-label">Sessions</div>
+    <div class="stat-value">{{ st.sessions }}</div>
+    <div class="stat-sub">{% if st.sessions %}avg {{ (st.total_sec // st.sessions)|dur }}{% else %}&nbsp;{% endif %}</div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-label">Longest session</div>
+    <div class="stat-value">{{ st.longest_sec|dur if st.longest_sec else "—" }}</div>
+    <div class="stat-sub" title="{{ st.longest_title }}">{{ st.longest_title or "&nbsp;"|safe }}</div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-label">Day record</div>
+    <div class="stat-value">{{ st.record_sec|dur if st.record_sec else "—" }}</div>
+    <div class="stat-sub">{{ st.record_day.strftime("%b %-d, %Y") if st.record_day else "&nbsp;"|safe }}</div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-label">Current streak</div>
+    <div class="stat-value">{{ st.streak_days }} {{ "day" if st.streak_days == 1 else "days" }}</div>
+    <div class="stat-sub">days in a row</div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-label">{{ ranges[st.range_key] }}</div>
+    <div class="stat-value">{{ st.range_total_sec|dur }}</div>
+    <div class="stat-sub">in the selected range</div>
+  </article>
+</section>
+<p class="note">Total time adds up session durations. If two timers ran at the same time, both count, so totals can be more than the clock time that passed.</p>
+
+<nav class="range-switch" aria-label="Range">
+  {% for key, label in ranges.items() %}
+  <a href="/stats?project={{ pq }}&range={{ key }}" {% if key == st.range_key %}aria-current="true"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+
+<section class="panel">
+  <h2>{% if st.range_key in ("7d", "30d") %}Last {{ ranges[st.range_key] }}{% else %}{{ ranges[st.range_key] }}{% endif %}</h2>
+  <div class="chart-box"><canvas id="chart-series" aria-label="Time per {{ st.series_unit }}" role="img"></canvas></div>
+  {% if st.goal_min and st.series_unit == "day" %}<p class="note">Dashed line: daily goal of {{ st.goal_min }} min.</p>{% endif %}
+</section>
+
+<section class="panel">
+  <h2>Time per tag · {{ ranges[st.range_key] }}</h2>
+  {% if st.per_tag %}
+  <div class="tag-bars">
+    {% for t in st.per_tag %}
+    <div class="tag-bar">
+      <span class="tag-bar-name" title="{{ t.name }}">{{ t.name }}</span>
+      <div class="tag-bar-track"><div class="tag-bar-fill" style="--c: {{ t.color }}; width: {{ t.pct }}%"></div></div>
+      <span class="tag-bar-value">{{ t.seconds|dur }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="note">A session with several tags adds its full time to each tag, so tag totals can add up to more than the total time.</p>
+  {% else %}
+  <p class="muted">No tagged sessions in this range.</p>
+  {% endif %}
+</section>
+
+<section class="panel" style="--c: {{ st.color }}">
+  <h2>Past year</h2>
+  <div class="heatmap-wrap">
+    <div class="heatmap" role="img" aria-label="Calendar heatmap of time per day">
+      {% for week in st.heatmap %}{% for cell in week %}{% if cell %}<i class="l{{ cell.level }}" title="{{ cell.day.strftime('%a %b %-d, %Y') }}: {{ cell.sec|dur }}"></i>{% else %}<i class="pad"></i>{% endif %}{% endfor %}{% endfor %}
+    </div>
+  </div>
+  <div class="heatmap-legend">Less {% for l in range(0, 5) %}<i class="l{{ l }}"></i>{% endfor %} More</div>
+</section>
+
+<script type="application/json" id="stats-data">{{ st.chart_json()|tojson }}</script>
+{% endblock %}

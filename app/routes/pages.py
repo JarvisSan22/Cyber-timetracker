@@ -11,6 +11,7 @@ from app import config
 from app.db import get_session
 from app.models import Project
 from app.services import projects as project_svc
+from app.services import stats as stats_svc
 from app.services import timers
 
 router = APIRouter()
@@ -105,6 +106,21 @@ def timer_page(request: Request, db: DBSession = Depends(get_session)):
     ctx = base_context(request, db, project, "timer") | timer_context(db, project)
     ctx["past_start"] = (ctx["now_local"] - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M")
     response = templates.TemplateResponse(request, "timer.html", ctx)
+    remember_project(response, project, request.query_params.get("project"))
+    return response
+
+
+@router.get("/stats", response_class=HTMLResponse)
+def stats_page(request: Request, range: str = "30d", db: DBSession = Depends(get_session)):
+    project = pick_project(request, db, allow_all=True)
+    settings = config.get_user_settings(db)
+    st = stats_svc.compute(db, settings, project.id if project else None, range)
+    ctx = base_context(request, db, project, "stats") | {
+        "st": st,
+        "ranges": stats_svc.RANGES,
+        "heatmap_levels": stats_svc.HEATMAP_LEVELS_MIN,
+    }
+    response = templates.TemplateResponse(request, "stats.html", ctx)
     remember_project(response, project, request.query_params.get("project"))
     return response
 

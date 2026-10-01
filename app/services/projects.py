@@ -187,8 +187,9 @@ def seed_demo_data(db: DBSession, *, seed: int = 7) -> bool:
     now = utcnow()
     for project, titles, count, (lo, hi) in plans:
         tags = list_tags(db, project.id)
-        for _ in range(count):
-            days_ago = rng.randint(0, 29)
+        for i in range(count):
+            # Chinese gets one session on each of the last 5 days so the streak shows.
+            days_ago = i if project is chinese and i < 5 else rng.randint(0, 29)
             start = (now - timedelta(days=days_ago)).replace(
                 hour=rng.choice([0, 1, 9, 10, 11, 12, 13, 14]), minute=rng.randint(0, 59), second=0, microsecond=0
             )

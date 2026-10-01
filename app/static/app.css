@@ -191,22 +191,21 @@ button.chip { font-size: 0.9rem; }
 .chart-box { position: relative; height: 220px; }
 .note { color: var(--muted); font-size: 0.8rem; margin: 0.6rem 0 0; }
 .tag-bars { display: grid; gap: 0.5rem; }
-.tag-bar { display: grid; grid-template-columns: minmax(5rem, 30%) 1fr auto; gap: 0.6rem; align-items: center; font-size: 0.9rem; }
+.tag-bar { display: grid; grid-template-columns: minmax(5rem, 30%) 1fr 5.6rem; gap: 0.6rem; align-items: center; font-size: 0.9rem; }
 .tag-bar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tag-bar-track { background: var(--card-2); border-radius: 4px; height: 0.8rem; overflow: hidden; }
 .tag-bar-fill { height: 100%; background: var(--c); border-radius: 4px; min-width: 2px; }
-.tag-bar-value { white-space: nowrap; font-variant-numeric: tabular-nums; color: #e2e8f0; }
+.tag-bar-value { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; color: #e2e8f0; }
 
 .heatmap-wrap { overflow-x: auto; padding-bottom: 0.3rem; }
 .heatmap { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 11px); grid-auto-columns: 11px; gap: 3px; width: max-content; }
-.heatmap i { display: block; width: 11px; height: 11px; border-radius: 2px; background: var(--card-2); }
-.heatmap i.l1 { background: color-mix(in srgb, var(--c) 30%, var(--card-2)); }
-.heatmap i.l2 { background: color-mix(in srgb, var(--c) 55%, var(--card-2)); }
-.heatmap i.l3 { background: color-mix(in srgb, var(--c) 80%, var(--card-2)); }
-.heatmap i.l4 { background: var(--c); }
+.heatmap i, .heatmap-legend i { display: block; width: 11px; height: 11px; border-radius: 2px; background: var(--card-2); }
+.heatmap i.l1, .heatmap-legend i.l1 { background: color-mix(in srgb, var(--c) 30%, var(--card-2)); }
+.heatmap i.l2, .heatmap-legend i.l2 { background: color-mix(in srgb, var(--c) 55%, var(--card-2)); }
+.heatmap i.l3, .heatmap-legend i.l3 { background: color-mix(in srgb, var(--c) 80%, var(--card-2)); }
+.heatmap i.l4, .heatmap-legend i.l4 { background: var(--c); }
 .heatmap i.pad { background: transparent; }
 .heatmap-legend { display: flex; gap: 3px; align-items: center; justify-content: flex-end; color: var(--muted); font-size: 0.75rem; margin-top: 0.4rem; }
-.heatmap-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; }
 
 /* --- Projects / Ideas / Settings --- */
 .card-list { display: grid; gap: 0.7rem; }

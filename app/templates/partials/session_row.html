@@ -16,9 +16,9 @@
   </div>
   <div class="session-actions">
     <button class="icon-btn" title="Restart" aria-label="Restart"
-            hx-post="/ui/sessions/{{ v.session.id }}/restart" hx-target="#running-timers" hx-swap="outerHTML">▶</button>
+            hx-post="/ui/sessions/{{ v.session.id }}/restart" hx-target="#running-timers" hx-swap="outerHTML">▶&#xFE0E;</button>
     <button class="icon-btn" title="Edit" aria-label="Edit"
-            hx-get="/ui/sessions/{{ v.session.id }}/edit" hx-target="#modal">✎</button>
+            hx-get="/ui/sessions/{{ v.session.id }}/edit" hx-target="#modal" hx-swap="innerHTML">✎</button>
     <button class="icon-btn danger" title="Delete" aria-label="Delete"
             hx-post="/ui/sessions/{{ v.session.id }}/delete" hx-swap="none">×</button>
   </div>

@@ -37,3 +37,12 @@ DESIGN.md has no "Build plan" section, so the milestones were defined here, foll
 - **Edit dialog** changes title, start, end, paused minutes, tags and note. Moving a session to another project is not supported in v1.
 - **Running timer clock**: the server sends elapsed seconds at render time and Alpine adds local wall-clock time, so a phone with a wrong clock still shows the right elapsed time.
 - **Demo seed** (`SEED_DEMO=1`) runs only when the database has no projects, with a fixed random seed: 3 projects, 40 sessions over the last 30 days.
+- **Stat cards are all-time** (Total time, Sessions, Longest, Day record, Streak). The range switch (7 days, 30 days, 12 months, all time) controls the bar chart, the time-per-tag bars and an extra "selected range" card.
+- **12 months / all time** charts use one bar per month; 7 and 30 days use one bar per day, today on the right.
+- **Streak** counts consecutive days with logged time ending today, or ending yesterday when nothing is logged yet today (so the streak does not read 0 every morning).
+- **Running timers count** in stats with their time so far.
+- **"All projects"** stats include archived projects and merge tags with the same name across projects into one bar.
+- **Time per tag** uses plain CSS bars instead of a second Chart.js chart (simpler, same look).
+- **Heatmap** shows the last 53 weeks, weeks starting Monday, with fixed levels (<15 min, <45 min, <90 min, more) and the project color. On phones it opens scrolled to the newest weeks.
+- **Daily goal line** shows on the day-based charts when the selected project has a goal.
+- **Local dev port**: on the build machine 127.0.0.1:8080 was already taken by another service, so local checks bound uvicorn to 127.0.0.2:8080, and docker-compose's host port is overridable with `TRACKER_PORT` (default 8080).

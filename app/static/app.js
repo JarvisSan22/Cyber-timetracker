@@ -43,7 +43,7 @@ document.addEventListener("alpine:init", () => {
 
 setInterval(updateTabTitle, 1000);
 document.addEventListener("DOMContentLoaded", updateTabTitle);
-document.addEventListener("htmx:afterSettle", updateTabTitle);
+document.addEventListener("htmx:load", updateTabTitle);
 
 // --- Charts (Statistics page) ---
 
@@ -109,6 +109,11 @@ function initStatsCharts() {
 }
 
 document.addEventListener("DOMContentLoaded", initStatsCharts);
+
+// Heatmap: show the most recent weeks first on narrow screens.
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".heatmap-wrap").forEach((el) => { el.scrollLeft = el.scrollWidth; });
+});
 
 // Register the service worker for PWA install / offline shell.
 if ("serviceWorker" in navigator) {
