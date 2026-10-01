@@ -259,3 +259,40 @@ def test_api_stats_export_backup(client, seeded):
     data = client.get("/api/export").json()
     assert client.post("/api/import", json=data).json()["imported"]["sessions"] == 2
     assert client.post("/api/import", json={"app": "other"}).status_code == 400
+
+
+# --- Themes ---
+
+
+def test_default_theme_is_cyberpunk(client):
+    r = client.get("/settings")
+    assert 'data-preset="cyberpunk"' in r.text and "--accent: #fcee0a" in r.text
+    assert "--accent-ink: #000000" in r.text
+    for preset in ("netrunner", "terminal", "sakura", "arasaka"):
+        assert f'value="{preset}"' in r.text
+
+
+def test_ui_theme_preset_and_custom_colors(client):
+    r = client.post("/ui/theme", data={"preset": "sakura", "color_accent": "#ff00aa", "color_bg": "#fff5f7"})
+    assert r.status_code == 200 and "1 custom colors" in r.text
+    page = client.get("/").text
+    assert 'data-theme="light"' in page and 'data-preset="sakura"' in page
+    assert "--accent: #ff00aa" in page and "--bg: #fff5f7" in page
+
+    # Picking a preset with its own colors clears the overrides.
+    from app import config
+    r = client.post("/ui/theme", data={"preset": "terminal", **{f"color_{k}": v for k, v in config.THEMES["terminal"]["colors"].items()}})
+    assert "Saved “Old tech green”." in r.text
+    assert "--accent: #33ff66" in client.get("/stats").text
+
+    assert "msg-error" in client.post("/ui/theme", data={"preset": "nope"}).text
+    assert "msg-error" in client.post("/ui/theme", data={"preset": "terminal", "color_text": "red"}).text
+
+
+def test_theme_survives_export_import(client):
+    client.post("/ui/theme", data={"preset": "netrunner", "color_accent": "#123456"})
+    data = client.get("/api/export").json()
+    client.post("/ui/theme", data={"preset": "cyberpunk"})
+    client.post("/api/import", json=data)
+    page = client.get("/").text
+    assert 'data-preset="netrunner"' in page and "--accent: #123456" in page

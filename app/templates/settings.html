@@ -3,8 +3,41 @@
 {% block heading %}Settings{% endblock %}
 
 {% block content %}
+{% block theme_form %}
+<form id="theme-form" class="item-card aug-panel aug-hot" data-augmented-ui="tl-clip br-clip border"
+      hx-post="/ui/theme" hx-target="this" hx-swap="outerHTML"
+      x-data='themeEditor({{ theme_presets|tojson }}, {{ theme.name|tojson }})'>
+  <h2 class="section" style="margin-top: 0">Theme</h2>
+  <div class="theme-presets" data-augmented-ui-reset>
+    {% for key, p in theme_presets.items() %}
+    <label class="theme-preset" data-augmented-ui="tl-clip br-clip border"
+           style="--pv-bg: {{ p.colors.bg }}; --pv-text: {{ p.colors.text }}; --pv-line: {{ p.colors.line }}; --pv-accent: {{ p.colors.accent }}; font-family: {{ p.fonts['font-body'] }}">
+      <input type="radio" name="preset" value="{{ key }}" {% if key == theme.name %}checked{% endif %} @change="choose('{{ key }}')">
+      {{ p.label }}
+      <span class="theme-swatches">
+        {% for c in ("accent", "accent-2", "danger", "card-2") %}<i style="background: {{ p.colors[c] }}"></i>{% endfor %}
+      </span>
+    </label>
+    {% endfor %}
+  </div>
+  <p class="muted" style="margin-bottom: 0.5rem">Colors (changes preview live; press Save to keep them)</p>
+  <div class="color-grid">
+    {% for key, label in theme_color_keys.items() %}
+    <label><input type="color" name="color_{{ key }}" data-key="{{ key }}" value="{{ theme.colors[key] }}" @input="apply()">{{ label }}</label>
+    {% endfor %}
+  </div>
+  <div class="form-actions">
+    <button type="submit">Save theme</button>
+    <button type="button" class="secondary" @click="reset()">Reset colors to preset</button>
+  </div>
+  {% if theme_message %}<p class="msg msg-ok">{{ theme_message }}</p>{% endif %}
+  {% if theme_error %}<p class="msg msg-error">{{ theme_error }}</p>{% endif %}
+</form>
+{% endblock %}
+
+<h2 class="section">General</h2>
 {% block settings_form %}
-<form id="settings-form" class="item-card" hx-post="/ui/settings" hx-target="this" hx-swap="outerHTML">
+<form id="settings-form" class="item-card aug-panel" data-augmented-ui="tl-clip br-clip border" hx-post="/ui/settings" hx-target="this" hx-swap="outerHTML">
   <label>Timezone
     <select name="timezone">
       {% for tz in timezones %}<option value="{{ tz }}" {% if tz == settings.timezone %}selected{% endif %}>{{ tz }}</option>{% endfor %}
@@ -37,7 +70,7 @@
 </div>
 
 <h2 class="section">Import</h2>
-<form class="item-card" hx-post="/ui/import" hx-encoding="multipart/form-data" hx-target="#import-result"
+<form class="item-card aug-panel" data-augmented-ui="tl-clip br-clip border" hx-post="/ui/import" hx-encoding="multipart/form-data" hx-target="#import-result"
       hx-confirm="Importing replaces ALL current data with the file's contents. Continue?">
   <label>JSON export file <input type="file" name="file" accept="application/json,.json" required></label>
   <button type="submit" class="secondary">Import and replace all data</button>

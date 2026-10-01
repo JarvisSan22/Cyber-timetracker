@@ -5,9 +5,10 @@ A self-hosted web app for tracking the time you spend on hobbies and learning: C
 - **Timer**: pick a project, tap a tag, press Start. Several timers can run at once, across projects. Pause, resume, stop, restart, edit, and delete with undo. Past sessions can be added by hand.
 - **Statistics**: total time, session count, longest session, day record, current streak, a bar chart (7 days, 30 days, 12 months, all time) with your daily goal, time per tag, and a one-year heatmap.
 - **Projects** with starter tag sets (language, art, coding), **Ideas** (your own feature-request list) and **Settings** (timezone, day start hour, CSV/JSON export, JSON import, database backup).
+- **Themes**: Cyberpunk yellow (default), Netrunner purple, Old tech green, Japan sakura and Arasaka red, each with editable colors in Settings (live preview). Shapes come from [augmented-ui](https://augmented-ui.com/).
 - Installable as a PWA. No login, no cloud, no internet needed: all JS/CSS is vendored in `app/static/vendor/`.
 
-Stack: Python 3.13, FastAPI, SQLModel, SQLite (WAL), Alembic, Jinja2, HTMX 2, Alpine.js 3, Chart.js 4, Pico.css. No Node or build step. Design: [docs/DESIGN.md](docs/DESIGN.md). Choices made during the build: [docs/DECISIONS.md](docs/DECISIONS.md).
+Stack: Python 3.13, FastAPI, SQLModel, SQLite (WAL), Alembic, Jinja2, HTMX 2, Alpine.js 3, Chart.js 4, Pico.css, augmented-ui 2, Rajdhani and Share Tech Mono fonts (OFL). No Node or build step. Design: [docs/DESIGN.md](docs/DESIGN.md). Choices made during the build: [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Run locally with uvicorn
 

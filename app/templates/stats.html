@@ -5,32 +5,32 @@
 {% set pq = project.id if project else "all" %}
 
 <section class="stat-cards" aria-label="Summary">
-  <article class="stat-card">
+  <article class="stat-card" data-augmented-ui="tr-clip bl-clip border">
     <div class="stat-label">Total time</div>
     <div class="stat-value">{{ st.total_sec|dur }}</div>
     <div class="stat-sub">{{ (st.total_sec / 3600)|round(1) }} hours, all time</div>
   </article>
-  <article class="stat-card">
+  <article class="stat-card" data-augmented-ui="tr-clip bl-clip border">
     <div class="stat-label">Sessions</div>
     <div class="stat-value">{{ st.sessions }}</div>
     <div class="stat-sub">{% if st.sessions %}avg {{ (st.total_sec // st.sessions)|dur }}{% else %}&nbsp;{% endif %}</div>
   </article>
-  <article class="stat-card">
+  <article class="stat-card" data-augmented-ui="tr-clip bl-clip border">
     <div class="stat-label">Longest session</div>
     <div class="stat-value">{{ st.longest_sec|dur if st.longest_sec else "—" }}</div>
     <div class="stat-sub" title="{{ st.longest_title }}">{{ st.longest_title or "&nbsp;"|safe }}</div>
   </article>
-  <article class="stat-card">
+  <article class="stat-card" data-augmented-ui="tr-clip bl-clip border">
     <div class="stat-label">Day record</div>
     <div class="stat-value">{{ st.record_sec|dur if st.record_sec else "—" }}</div>
     <div class="stat-sub">{{ st.record_day.strftime("%b %-d, %Y") if st.record_day else "&nbsp;"|safe }}</div>
   </article>
-  <article class="stat-card">
+  <article class="stat-card" data-augmented-ui="tr-clip bl-clip border">
     <div class="stat-label">Current streak</div>
     <div class="stat-value">{{ st.streak_days }} {{ "day" if st.streak_days == 1 else "days" }}</div>
     <div class="stat-sub">days in a row</div>
   </article>
-  <article class="stat-card">
+  <article class="stat-card" data-augmented-ui="tr-clip bl-clip border">
     <div class="stat-label">{{ ranges[st.range_key] }}</div>
     <div class="stat-value">{{ st.range_total_sec|dur }}</div>
     <div class="stat-sub">in the selected range</div>
@@ -44,13 +44,13 @@
   {% endfor %}
 </nav>
 
-<section class="panel">
+<section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
   <h2>{% if st.range_key in ("7d", "30d") %}Last {{ ranges[st.range_key] }}{% else %}{{ ranges[st.range_key] }}{% endif %}</h2>
   <div class="chart-box"><canvas id="chart-series" aria-label="Time per {{ st.series_unit }}" role="img"></canvas></div>
   {% if st.goal_min and st.series_unit == "day" %}<p class="note">Dashed line: daily goal of {{ st.goal_min }} min.</p>{% endif %}
 </section>
 
-<section class="panel">
+<section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
   <h2>Time per tag · {{ ranges[st.range_key] }}</h2>
   {% if st.per_tag %}
   <div class="tag-bars">
@@ -68,7 +68,7 @@
   {% endif %}
 </section>
 
-<section class="panel" style="--c: {{ st.color }}">
+<section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border" style="--c: {{ st.color }}">
   <h2>Past year</h2>
   <div class="heatmap-wrap">
     <div class="heatmap" role="img" aria-label="Calendar heatmap of time per day">

@@ -377,6 +377,18 @@ def save_settings(
     return HTMLResponse(render_block("settings.html", "settings_form", settings_context(db, **extra)))
 
 
+@router.post("/theme", response_class=HTMLResponse)
+async def save_theme(request: Request, db: DBSession = Depends(get_session)):
+    form = await request.form()
+    colors = {key: str(form.get(f"color_{key}", "")) for key in config.THEME_COLOR_KEYS if form.get(f"color_{key}")}
+    try:
+        theme = config.save_theme(db, str(form.get("preset", "")), colors)
+        extra = {"theme_message": f"Saved “{theme.label}”" + (f" with {len(theme.overrides)} custom colors." if theme.overrides else ".")}
+    except ValueError as e:
+        extra = {"theme_error": str(e)}
+    return HTMLResponse(render_block("settings.html", "theme_form", settings_context(db, **extra)))
+
+
 @router.post("/import", response_class=HTMLResponse)
 async def import_json(file: UploadFile = File(...), db: DBSession = Depends(get_session)):
     try:

@@ -55,3 +55,13 @@ DESIGN.md has no "Build plan" section, so the milestones were defined here, foll
 - **Service worker** caches only `/static/` files (stale-while-revalidate); pages and `/ui/` fragments always go to the server so timers stay live.
 - **PWA icons** are generated PNGs (192, 512) plus an SVG stopwatch.
 - **FastAPI `/docs`** still loads Swagger UI from a CDN, as FastAPI does by default. It is a developer tool, not one of the app's pages, so it was left as is; the app pages load nothing from a CDN.
+
+## Theme update (after v1)
+
+- **augmented-ui 2.0.0** instead of the v1 linked in the request: same idea, current release, valid `data-augmented-ui` attribute. Vendored as `app/static/vendor/augmented-ui.min.css` (BSD-2).
+- **Shapes** go on containers (panels, cards, timer cards, stat cards, chips, Start button, dialog, toast). Their children carry `data-augmented-ui-reset` where augmented elements nest. Other buttons get a matching cut corner with plain `clip-path`, since augmented-ui borders use `::before`/`::after`, which Pico uses on form controls.
+- **Fonts**: Rajdhani (body) and Share Tech Mono (clocks, numbers), vendored from Fontsource with their OFL licenses. Old tech green uses the mono font everywhere; Japan sakura uses the system font.
+- **Themes** are presets in `app/config.py` (`THEMES`). The active preset and any changed colors are stored in the `setting` table (`theme`, `theme_colors`) and written into `<html style="--bg: ...">` by the server, so every device shows the same theme and JSON export/import carries it. Only colors that differ from the preset are stored, so picking a preset and saving resets them.
+- **Text on accent/danger buttons** (black or white) is chosen automatically from the color's luminance, so any picked accent stays readable.
+- **Japan sakura** is the one light theme; the others are dark with faint scanlines.
+- **Chart bars** keep the project's color; the daily goal line uses the theme's second accent.

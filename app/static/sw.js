@@ -1,11 +1,14 @@
 // Service worker: makes the app installable and caches static files.
 // Pages and /ui/ fragments always come from the server (timers must be live);
 // static assets are cache-first so the app shell loads fast on the phone.
-const CACHE = "hobby-tracker-v1";
+const CACHE = "hobby-tracker-v2";
 const ASSETS = [
   "/static/app.css",
   "/static/app.js",
   "/static/vendor/pico.min.css",
+  "/static/vendor/augmented-ui.min.css",
+  "/static/vendor/fonts/rajdhani-latin-600.woff2",
+  "/static/vendor/fonts/share-tech-mono-latin-400.woff2",
   "/static/vendor/htmx.min.js",
   "/static/vendor/alpine.min.js",
   "/static/vendor/chart.umd.min.js",

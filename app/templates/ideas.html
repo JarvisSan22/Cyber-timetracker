@@ -19,7 +19,7 @@
 <section id="idea-list" class="card-list">
   {% if error %}<p class="msg msg-error">{{ error }}</p>{% endif %}
   {% for idea in ideas %}
-  <article class="item-card idea-row {{ idea.status }}">
+  <article class="item-card aug-panel idea-row {{ idea.status }}" data-augmented-ui="tl-clip br-clip border">
     <span class="idea-text">{{ idea.text }}</span>
     <select name="status" aria-label="Status" hx-post="/ui/ideas/{{ idea.id }}" hx-trigger="change"
             hx-vals='{"status_filter": "{{ status_filter }}"}' hx-target="#idea-list" hx-swap="outerHTML">

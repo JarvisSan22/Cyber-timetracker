@@ -3,7 +3,7 @@
 {% block heading %}Projects{% endblock %}
 
 {% block content %}
-<article class="item-card" id="new">
+<article class="item-card aug-panel aug-hot" data-augmented-ui="tl-clip br-clip border" id="new">
   <h3>New project</h3>
   <form hx-post="/ui/projects" hx-target="#project-list" hx-swap="outerHTML"
         hx-on::after-request="if (event.detail.successful && !event.detail.xhr.responseText.includes('msg-error')) this.reset()">
@@ -26,7 +26,7 @@
   {% if message %}<p class="msg msg-ok">{{ message }}</p>{% endif %}
   {% if error %}<p class="msg msg-error">{{ error }}</p>{% endif %}
   {% for p in all_projects %}
-  <article class="item-card {% if p.archived %}archived{% endif %}" id="project-{{ p.id }}">
+  <article class="item-card aug-panel {% if p.archived %}archived{% endif %}" data-augmented-ui="tl-clip br-clip border" id="project-{{ p.id }}">
     <h3><span class="dot" style="--c: {{ p.color }}"></span>{{ p.name }}{% if p.archived %}&nbsp;<small class="muted">(archived)</small>{% endif %}</h3>
     <form class="inline-form" hx-post="/ui/projects/{{ p.id }}" hx-target="#project-list" hx-swap="outerHTML">
       <input type="color" name="color" value="{{ p.color }}" aria-label="Color">

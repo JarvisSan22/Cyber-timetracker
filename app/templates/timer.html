@@ -3,18 +3,18 @@
 
 {% block content %}
 {% if not project %}
-<article class="empty">
+<article class="empty item-card aug-panel" data-augmented-ui="tl-clip br-clip border">
   <p>No projects yet.</p>
   <a role="button" href="/projects#new">Create your first project</a>
 </article>
 {% else %}
-<section class="quick-start">
-  <form id="start-form" hx-post="/ui/sessions/start" hx-target="#running-timers" hx-swap="outerHTML"
+<section class="quick-start aug-panel aug-hot" data-augmented-ui="tl-clip br-clip border">
+  <form id="start-form" data-augmented-ui-reset hx-post="/ui/sessions/start" hx-target="#running-timers" hx-swap="outerHTML"
         hx-on::after-request="if (event.detail.successful && event.detail.elt === this) { this.reset(); }">
     <input type="hidden" name="project_id" value="{{ project.id }}">
     <input type="text" name="title" placeholder="What are you working on? (optional)" aria-label="Title" autocomplete="off">
     {% include "partials/tag_chips.html" %}
-    <button type="submit" class="start-btn">▶&#xFE0E; Start</button>
+    <button type="submit" class="start-btn aug-btn" data-augmented-ui="tl-clip br-clip">▶&#xFE0E; Start</button>
   </form>
 </section>
 
@@ -22,7 +22,7 @@
 
 <details class="past-session">
   <summary>＋ Add past session</summary>
-  <form hx-post="/ui/sessions" hx-target="#past-result"
+  <form class="aug-panel" data-augmented-ui="tl-clip br-clip border" hx-post="/ui/sessions" hx-target="#past-result"
         hx-on::after-request="if (event.detail.successful && event.detail.xhr.getResponseHeader('HX-Trigger')) { this.reset(); }">
     <input type="hidden" name="project_id" value="{{ project.id }}">
     <input type="text" name="title" placeholder="Title (optional)" aria-label="Title">
@@ -32,9 +32,9 @@
       <label>End <input type="datetime-local" name="ended_at"></label>
     </div>
     <label>or duration (minutes) <input type="number" name="duration_min" min="1" step="1" inputmode="numeric" placeholder="e.g. 45"></label>
-    <fieldset class="chips">
+    <fieldset class="chips" data-augmented-ui-reset>
       {% for t in tags %}
-      <label class="chip" style="--c: {{ t.color }}"><input type="checkbox" name="tag_ids" value="{{ t.id }}"><span>{{ t.name }}</span></label>
+      <label class="chip" style="--c: {{ t.color }}" data-augmented-ui="tl-clip br-clip border"><input type="checkbox" name="tag_ids" value="{{ t.id }}"><span>{{ t.name }}</span></label>
       {% endfor %}
     </fieldset>
     <input type="text" name="note" placeholder="Note (optional)" aria-label="Note">
@@ -51,12 +51,12 @@
 
 {% block edit_dialog %}
 <dialog open class="edit-dialog" x-data @keydown.escape.window="$el.remove()">
-  <article>
+  <article class="aug-panel aug-hot" data-augmented-ui="tl-clip br-clip border">
     <header>
       <button type="button" aria-label="Close" rel="prev" @click="$root.remove()"></button>
       <strong>Edit session</strong>
     </header>
-    <form hx-post="/ui/sessions/{{ v.session.id }}" hx-target="#modal" hx-swap="innerHTML">
+    <form hx-post="/ui/sessions/{{ v.session.id }}" hx-target="#modal" hx-swap="innerHTML" data-augmented-ui-reset>
       {% if error %}<p class="msg msg-error">{{ error }}</p>{% endif %}
       <label>Title <input type="text" name="title" value="{{ v.session.title }}"></label>
       <div class="grid-2">
@@ -68,9 +68,9 @@
         {% endif %}
       </div>
       <label>Paused (minutes) <input type="number" name="paused_min" min="0" step="0.1" value="{{ ((v.session.paused_sec or 0) / 60)|round(1) }}"></label>
-      <fieldset class="chips">
+      <fieldset class="chips" data-augmented-ui-reset>
         {% for t in all_tags %}
-        <label class="chip" style="--c: {{ t.color }}"><input type="checkbox" name="tag_ids" value="{{ t.id }}" {% if t.id in checked %}checked{% endif %}><span>{{ t.name }}</span></label>
+        <label class="chip" style="--c: {{ t.color }}" data-augmented-ui="tl-clip br-clip border"><input type="checkbox" name="tag_ids" value="{{ t.id }}" {% if t.id in checked %}checked{% endif %}><span>{{ t.name }}</span></label>
         {% endfor %}
       </fieldset>
       <label>Note <textarea name="note" rows="2">{{ v.session.note }}</textarea></label>
@@ -85,7 +85,7 @@
 
 {% block undo_toast %}
 <div id="toast" hx-swap-oob="true">
-  <div class="toast" x-data x-init="setTimeout(() => $el.remove(), 8000)">
+  <div class="toast aug-btn" data-augmented-ui="tl-clip br-clip" x-data x-init="setTimeout(() => $el.remove(), 8000)">
     <span>Deleted “{{ deleted_title }}”</span>
     <form hx-post="/ui/sessions/restore" hx-swap="none">
       <input type="hidden" name="data" value="{{ snapshot }}">

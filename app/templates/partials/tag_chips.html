@@ -1,13 +1,13 @@
 <div id="tag-chips" class="tag-chips" x-data="{ adding: false }">
-  <fieldset class="chips" aria-label="Tags">
+  <fieldset class="chips" aria-label="Tags" data-augmented-ui-reset>
     {% for t in tags %}
-    <label class="chip" style="--c: {{ t.color }}">
+    <label class="chip" style="--c: {{ t.color }}" data-augmented-ui="tl-clip br-clip border">
       <input type="checkbox" name="tag_ids" value="{{ t.id }}" {% if t.id in checked_tag_ids %}checked{% endif %}>
       <span>{{ t.name }}</span>
     </label>
     {% endfor %}
-    <a class="chip chip-ghost" href="/projects#project-{{ project.id }}" title="Edit tags" aria-label="Edit tags">✎</a>
-    <button type="button" class="chip chip-ghost" x-show="!adding" @click="adding = true; $nextTick(() => $refs.newTag.focus())">＋ New tag</button>
+    <a class="chip chip-ghost" data-augmented-ui="tl-clip br-clip border" href="/projects#project-{{ project.id }}" title="Edit tags" aria-label="Edit tags">✎</a>
+    <button type="button" class="chip chip-ghost" data-augmented-ui="tl-clip br-clip border" x-show="!adding" @click="adding = true; $nextTick(() => $refs.newTag.focus())">＋ New tag</button>
   </fieldset>
   <div class="new-tag" x-show="adding" x-cloak>
     <input type="text" name="new_tag" x-ref="newTag" placeholder="New tag name" aria-label="New tag name"

@@ -72,6 +72,7 @@ def base_context(request: Request, db: DBSession, project: Project | None, page:
         "project": project,
         "projects": project_svc.list_projects(db),
         "settings": settings,
+        "theme": config.get_theme(db),
         "today": timers.local_day(now, settings.tz, settings.day_start_hour),
         "now_local": now,
     }
@@ -153,6 +154,14 @@ def ideas_context(db: DBSession, status: str = "", **extra) -> dict:
 def settings_context(db: DBSession, **extra) -> dict:
     return {
         "settings": config.get_user_settings(db),
+        "theme": config.get_theme(db),
+        "theme_presets": {
+            key: {"label": p["label"], "scheme": p["scheme"], "colors": p["colors"], "fonts": config.FONT_SETS[p["fonts"]]}
+            for key, p in config.THEMES.items()
+        },
+        "theme_color_keys": config.THEME_COLOR_KEYS,
+        "theme_message": "",
+        "theme_error": "",
         "timezones": sorted(available_timezones()),
         "message": "",
         "error": "",
