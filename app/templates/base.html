@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="{{ theme.colors.bg }}">
   <meta name="color-scheme" content="{{ theme.scheme }}">
-  <title>{% block title %}Hobby Tracker{% endblock %}</title>
+  <title>{% block title %}Cyber Tracker{% endblock %}</title>
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
@@ -19,6 +19,13 @@
 </head>
 <body>
   <header class="topbar container">
+    <a class="brand" href="/" aria-label="Cyber Tracker home">
+      <svg class="brand-mark" viewBox="0 0 512 512" aria-hidden="true">
+        <polygon points="256,86 403.2,171 403.2,341 256,426 108.8,341 108.8,171" fill="none" stroke="var(--accent)" stroke-width="44"/>
+        <circle cx="256" cy="256" r="80" fill="none" stroke="var(--accent-2)" stroke-width="40"/>
+      </svg>
+      <span>Cyber Tracker</span>
+    </a>
     {% if page in ("timer", "stats") %}
     <form class="picker" method="get" action="{{ '/stats' if page == 'stats' else '/' }}">
       <span class="dot" style="--c: {{ project.color if project else '#94a3b8' }}"></span>

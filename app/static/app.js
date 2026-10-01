@@ -1,4 +1,4 @@
-// Hobby Tracker front-end glue: Alpine timer ticker, tab title, Chart.js setup.
+// Cyber Tracker front-end glue: Alpine timer ticker, tab title, Chart.js setup.
 
 const BASE_TITLE = document.title;
 
@@ -19,7 +19,7 @@ function updateTabTitle() {
   }
   let longest = 0;
   cards.forEach((c) => { longest = Math.max(longest, Number(c.dataset.secs) || 0); });
-  document.title = `⏱ ${cards.length} running · ${formatClock(longest)}`;
+  document.title = `⌬ ${cards.length} running · ${formatClock(longest)}`;
 }
 
 document.addEventListener("alpine:init", () => {

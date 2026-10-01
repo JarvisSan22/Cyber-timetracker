@@ -1,6 +1,6 @@
 #!/bin/sh
 # Nightly backup: download a consistent copy of the SQLite file, keep the last 14.
-# Cron (on the Pi):  15 3 * * * /home/pi/hobby-tracker/scripts/backup.sh >> /home/pi/tracker-backups/backup.log 2>&1
+# Cron (on the Pi):  15 3 * * * /home/pi/cyber-tracker/scripts/backup.sh >> /home/pi/tracker-backups/backup.log 2>&1
 set -eu
 
 URL="${TRACKER_URL:-http://localhost:8686}"

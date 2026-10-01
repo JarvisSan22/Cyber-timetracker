@@ -36,7 +36,7 @@ def export_json(db: DBSession) -> dict:
     sessions = list(db.exec(select(Session).order_by(Session.id)).all())
     tag_map = tags_for(db, [s.id for s in sessions])
     return {
-        "app": "hobby-tracker",
+        "app": "cyber-tracker",
         "version": EXPORT_VERSION,
         "exported_at": utcnow().isoformat(),
         "projects": [
@@ -96,8 +96,9 @@ def export_csv(db: DBSession) -> str:
 
 def import_json(db: DBSession, data: dict) -> dict:
     """Replace all data with a JSON export. Everything happens in one transaction."""
-    if not isinstance(data, dict) or data.get("app") != "hobby-tracker":
-        raise ValueError("Not a Hobby Tracker export file")
+    # "hobby-tracker" is the app's name before the rename; old exports still import.
+    if not isinstance(data, dict) or data.get("app") not in ("cyber-tracker", "hobby-tracker"):
+        raise ValueError("Not a Cyber Tracker export file")
     if data.get("version") != EXPORT_VERSION:
         raise ValueError(f"Unsupported export version: {data.get('version')}")
     try:

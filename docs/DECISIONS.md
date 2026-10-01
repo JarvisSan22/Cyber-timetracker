@@ -65,3 +65,13 @@ DESIGN.md has no "Build plan" section, so the milestones were defined here, foll
 - **Text on accent/danger buttons** (black or white) is chosen automatically from the color's luminance, so any picked accent stays readable.
 - **Japan sakura** is the one light theme; the others are dark with faint scanlines.
 - **Chart bars** keep the project's color; the daily goal line uses the theme's second accent.
+
+## Production setup and rename
+
+- **Name**: the app is called **Cyber Tracker**. The icon is a hexagon with an inner ring (⌬) in Cyberpunk yellow and cyan. The header shows it as inline SVG, because the ⌬ character is missing from many phone fonts; the browser tab title uses the character. DESIGN.md keeps the original name.
+- **Exports** now say `"app": "cyber-tracker"`; files exported before the rename (`"hobby-tracker"`) still import.
+- **Target is a Raspberry Pi 3** on 64-bit Raspberry Pi OS Lite. The image also builds for armv7 (32-bit OS), but Docker Engine 28 is the last release for 32-bit Raspberry Pi OS, so 64-bit is the documented path.
+- **Container**: runs as `PUID:PGID` from `.env` (default 1000), one uvicorn worker, no access log, Docker logs capped at 3 × 1 MB, `init: true`, 256 MB memory cap, health check every 60 s with a 60 s start period for the slow Pi 3 start.
+- **Requirements split**: `requirements.txt` is runtime only; `requirements-dev.txt` adds pytest and httpx.
+- **`scripts/install-pi.sh`** does the one-time Pi setup (Docker check or install, `.env`, `./data` ownership, build, health wait, optional backup cron). It asks before installing Docker or touching crontab.
+- **Exposure**: the app binds to all interfaces so the LAN can reach it. Internet exposure is not supported (no login); the README says to use Tailscale instead of port forwarding.

@@ -7,3 +7,8 @@ docs
 **/__pycache__
 .pytest_cache
 *.db
+.env
+.env.*
+requirements-dev.txt
+scripts
+README.md

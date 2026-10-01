@@ -248,12 +248,12 @@ def export(format: Literal["json", "csv"] = "json", db: DBSession = Depends(get_
         return Response(
             backup.export_csv(db),
             media_type="text/csv; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="hobby-tracker-sessions-{stamp}.csv"'},
+            headers={"Content-Disposition": f'attachment; filename="cyber-tracker-sessions-{stamp}.csv"'},
         )
     return Response(
         json.dumps(backup.export_json(db), ensure_ascii=False, indent=2),
         media_type="application/json",
-        headers={"Content-Disposition": f'attachment; filename="hobby-tracker-{stamp}.json"'},
+        headers={"Content-Disposition": f'attachment; filename="cyber-tracker-{stamp}.json"'},
     )
 
 

@@ -1,13 +1,25 @@
 services:
   tracker:
     build: .
-    container_name: hobby-tracker
+    image: cyber-tracker:latest
+    container_name: cyber-tracker
+    # Files in ./data are created as this host user (see .env.example).
+    user: "${PUID:-1000}:${PGID:-1000}"
+    init: true
     ports:
       - "${TRACKER_PORT:-8686}:8686"
     volumes:
       - ./data:/data
     environment:
-      - TZ=Asia/Tokyo
+      - TZ=${TZ:-Asia/Tokyo}
       # Set to 1 to add demo projects and sessions on first run (empty database only).
       - SEED_DEMO=${SEED_DEMO:-0}
     restart: unless-stopped
+    # A Pi 3 has 1 GB of RAM; the app uses about 80-120 MB.
+    mem_limit: 256m
+    # Keep logs small so they never fill the SD card.
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "3"

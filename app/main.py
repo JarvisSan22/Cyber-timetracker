@@ -16,7 +16,7 @@ from app.routes import api, htmx, pages
 from app.services.projects import Conflict, NotFound, seed_demo_data
 from app.services.timers import InvalidState
 
-log = logging.getLogger("hobby_tracker")
+log = logging.getLogger("cyber_tracker")
 
 
 def run_migrations() -> None:
@@ -39,7 +39,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Hobby Time Tracker", lifespan=lifespan)
+app = FastAPI(title="Cyber Tracker", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=config.APP_DIR / "static"), name="static")
 app.include_router(pages.router)
 app.include_router(htmx.router)

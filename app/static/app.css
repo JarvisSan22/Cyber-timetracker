@@ -1,4 +1,4 @@
-/* Hobby Tracker: theme layer on top of Pico + augmented-ui. Mobile-first.
+/* Cyber Tracker: theme layer on top of Pico + augmented-ui. Mobile-first.
  *
  * Every color comes from the theme tokens below. The server writes the active
  * theme's values into <html style="--bg: ...">, so these defaults only apply
@@ -128,7 +128,13 @@ button, [role="button"] { text-transform: uppercase; letter-spacing: 0.06em; }
 [data-augmented-ui] { border: 0 !important; border-radius: 0 !important; }
 
 /* --- Header: project picker + tabs --- */
-.topbar { padding-top: 0.9rem; padding-bottom: 0.25rem; }
+.topbar { padding-top: 0.7rem; padding-bottom: 0.25rem; }
+.brand {
+  display: inline-flex; align-items: center; gap: 0.45rem; margin-bottom: 0.55rem; text-decoration: none;
+  color: var(--accent); font-weight: 700; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.22em;
+}
+.brand-mark { width: 1.6rem; height: 1.6rem; flex: none; }
+:root[data-theme="dark"] .brand-mark { filter: drop-shadow(0 0 4px var(--glow)); }
 .page-title {
   font-size: 1.6rem; margin: 0.4rem 0 0.6rem; text-transform: uppercase; letter-spacing: 0.08em;
   color: var(--accent); border-left: 4px solid var(--accent); padding-left: 0.6rem;
