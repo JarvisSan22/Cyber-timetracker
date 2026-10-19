@@ -13,7 +13,7 @@ from sqlmodel import Session as DBSession
 from sqlmodel import delete, select
 
 from app import config
-from app.models import Idea, Project, Session, SessionTag, Setting, Tag, utcnow
+from app.models import Idea, MinedCard, Project, Session, SessionTag, Setting, Tag, utcnow
 from app.services.timers import duration, tags_for
 
 EXPORT_VERSION = 1
@@ -64,6 +64,10 @@ def export_json(db: DBSession) -> dict:
             for i in db.exec(select(Idea).order_by(Idea.id)).all()
         ],
         "settings": {s.key: s.value for s in db.exec(select(Setting)).all()},
+        "cards": [
+            {**c.model_dump(exclude={"created_at"}), "created_at": _iso(c.created_at)}
+            for c in db.exec(select(MinedCard).order_by(MinedCard.id)).all()
+        ],
     }
 
 
@@ -102,7 +106,7 @@ def import_json(db: DBSession, data: dict) -> dict:
     if data.get("version") != EXPORT_VERSION:
         raise ValueError(f"Unsupported export version: {data.get('version')}")
     try:
-        for model in (SessionTag, Session, Tag, Idea, Project, Setting):
+        for model in (MinedCard, SessionTag, Session, Tag, Idea, Project, Setting):
             db.exec(delete(model))
         for p in data.get("projects", []):
             db.add(Project(**{**p, "created_at": _parse(p.get("created_at")) or utcnow()}))
@@ -132,6 +136,10 @@ def import_json(db: DBSession, data: dict) -> dict:
             db.add(Idea(**{**i, "created_at": _parse(i.get("created_at")) or utcnow()}))
         for key, value in (data.get("settings") or {}).items():
             db.add(Setting(key=str(key), value=str(value)))
+        db.flush()
+        # Exports made before Cyber Miner have no "cards" key.
+        for c in data.get("cards", []):
+            db.add(MinedCard(**{**c, "created_at": _parse(c["created_at"])}))
         db.commit()
     except (KeyError, TypeError, ValueError) as e:
         db.rollback()
@@ -139,7 +147,7 @@ def import_json(db: DBSession, data: dict) -> dict:
     except Exception:
         db.rollback()
         raise
-    return {k: len(data.get(k, [])) for k in ("projects", "tags", "sessions", "ideas")}
+    return {k: len(data.get(k, [])) for k in ("projects", "tags", "sessions", "ideas", "cards")}
 
 
 def backup_copy(db: DBSession) -> Path:

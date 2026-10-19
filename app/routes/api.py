@@ -13,7 +13,7 @@ from sqlmodel import col, select
 from app import config, schemas
 from app.db import get_session
 from app.models import Session, SessionTag
-from app.services import backup, stats, timers
+from app.services import backup, cards, stats, timers
 from app.services import projects as project_svc
 
 router = APIRouter(prefix="/api", tags=["api"])
@@ -196,7 +196,29 @@ def get_stats(
         "series": {"unit": st.series_unit, "labels": st.series_labels, "minutes": st.series_values},
         "per_tag": [{"name": t["name"], "color": t["color"], "seconds": t["seconds"]} for t in st.per_tag],
         "goal_min": st.goal_min,
+        "cards": {"total": st.cards_total, "today": st.cards_today, "range": st.cards_range},
     }
+
+
+# --- Mined cards (Cyber Miner extension) ---
+
+
+@router.get("/cards", response_model=list[schemas.CardOut])
+def list_cards(
+    project_id: int | None = None,
+    from_: datetime | None = Query(None, alias="from"),
+    to: datetime | None = None,
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: DBSession = Depends(get_session),
+):
+    return cards.list_cards(db, project_id, from_, to, limit, offset)
+
+
+@router.post("/cards", response_model=schemas.CardOut, status_code=201)
+def create_card(body: schemas.CardIn, db: DBSession = Depends(get_session)):
+    """Called by the extension after Anki accepted the note. 404 for an unknown project or session."""
+    return cards.create_card(db, **body.model_dump())
 
 
 # --- Ideas ---
@@ -236,6 +258,13 @@ def put_settings(body: schemas.SettingsIO, db: DBSession = Depends(get_session))
     except ValueError as e:
         raise _bad_request(e) from e
     return schemas.SettingsIO(timezone=s.timezone, day_start_hour=s.day_start_hour, week_start=s.week_start)
+
+
+@router.get("/theme", response_model=schemas.ThemeOut)
+def get_theme(db: DBSession = Depends(get_session)):
+    """Active theme as CSS custom properties, so the extension can follow the tracker's look."""
+    theme = config.get_theme(db)
+    return schemas.ThemeOut(name=theme.name, label=theme.label, scheme=theme.scheme, vars=theme.css_vars)
 
 
 # --- Export, import, backup ---

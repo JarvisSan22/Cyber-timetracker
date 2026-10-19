@@ -88,6 +88,34 @@ class SessionOut(BaseModel):
     tag_ids: list[int]
 
 
+class CardIn(BaseModel):
+    project_id: int
+    session_id: int | None = None
+    created_at: AwareDatetime | None = None
+    site: str = ""
+    source_title: str = ""
+    word: str = ""
+    anki_note_id: int | None = None
+
+
+class CardOut(BaseModel):
+    id: int
+    project_id: int
+    session_id: int | None
+    created_at: datetime
+    site: str
+    source_title: str
+    word: str
+    anki_note_id: int | None
+
+
+class ThemeOut(BaseModel):
+    name: str
+    label: str
+    scheme: str
+    vars: dict[str, str]
+
+
 class IdeaIn(BaseModel):
     text: str = Field(min_length=1)
     status: str = "open"

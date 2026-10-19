@@ -1,4 +1,5 @@
 fastapi==0.142.2
+starlette==1.7.0  # CORSMiddleware allow_private_network (Cyber Miner extension)
 uvicorn==0.54.0
 sqlmodel==0.0.47
 sqlalchemy==2.0.54

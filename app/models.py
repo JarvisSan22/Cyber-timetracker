@@ -51,6 +51,19 @@ class SessionTag(SQLModel, table=True):
     tag_id: int = Field(foreign_key="tag.id", primary_key=True)
 
 
+class MinedCard(SQLModel, table=True):
+    """A sentence card the Cyber Miner extension sent to Anki. Only counted here; Anki keeps the card."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="project.id", index=True)
+    session_id: int | None = Field(default=None, foreign_key="session.id", ondelete="SET NULL")
+    created_at: datetime = Field(default_factory=utcnow, index=True)
+    site: str = ""  # "youtube", "netflix", ...
+    source_title: str = ""
+    word: str = ""
+    anki_note_id: int | None = None
+
+
 class Idea(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     text: str

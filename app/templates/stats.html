@@ -34,6 +34,13 @@
     <div class="stat-value">{{ st.range_total_sec|dur }}</div>
     <div class="stat-sub">in the selected range</div>
   </article>
+  {% if st.cards_total %}
+  <article class="stat-card" data-augmented-ui="tr-clip bl-clip border">
+    <div class="stat-label">Cards mined</div>
+    <div class="stat-value">{{ st.cards_total }}</div>
+    <div class="stat-sub">{{ st.cards_today }} today · {{ st.cards_range }} in range</div>
+  </article>
+  {% endif %}
 </section>
 <p class="note">Total time adds up session durations. If two timers ran at the same time, both count, so totals can be more than the clock time that passed.</p>
 

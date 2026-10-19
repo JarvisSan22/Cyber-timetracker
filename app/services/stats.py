@@ -5,6 +5,7 @@ Rules (from DESIGN.md):
 - Totals add up session durations even when sessions overlap.
 - Time per tag adds the full duration to every tag on the session.
 - Running sessions count with their duration so far.
+- Mined cards (from the Cyber Miner extension) count on the day they were mined.
 """
 
 from collections import defaultdict
@@ -16,6 +17,7 @@ from sqlmodel import select
 
 from app.config import UserSettings
 from app.models import Project, Session, utcnow
+from app.services.cards import per_day_counts
 from app.services.timers import duration, local_day, tags_for
 
 RANGES = {"7d": "7 days", "30d": "30 days", "12m": "12 months", "all": "All time"}
@@ -40,6 +42,9 @@ class Stats:
     per_tag: list[dict] = field(default_factory=list)  # name, color, seconds, pct
     heatmap: list[list[dict | None]] = field(default_factory=list)  # weeks of 7 cells: {day, sec, level}
     goal_min: int | None = None
+    cards_total: int = 0
+    cards_today: int = 0
+    cards_range: int = 0
     color: str = "#22c55e"
 
     def chart_json(self) -> dict:
@@ -183,6 +188,11 @@ def compute(
             m = merged.setdefault(entry["name"], {**entry, "seconds": 0})
             m["seconds"] += entry["seconds"]
         totals = dict(enumerate(merged.values()))
+    cards_per_day = per_day_counts(db, settings, project_id)
+    st.cards_total = sum(cards_per_day.values())
+    st.cards_today = cards_per_day.get(today, 0)
+    st.cards_range = sum(n for d, n in cards_per_day.items() if range_start is None or d >= range_start)
+
     st.per_tag = sorted(totals.values(), key=lambda e: e["seconds"], reverse=True)
     top = st.per_tag[0]["seconds"] if st.per_tag else 0
     for entry in st.per_tag:

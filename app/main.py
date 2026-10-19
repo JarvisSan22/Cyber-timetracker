@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session as DBSession
@@ -40,6 +41,17 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Cyber Tracker", lifespan=lifespan)
+# Only the Cyber Miner extension may read the API cross-origin; web pages stay blocked. Chrome is meant to
+# skip CORS for extensions holding a host permission, but does not always do so for permissions granted
+# at runtime, so the tracker says yes explicitly.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=config.extension_origins(),
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_private_network=True,  # Chrome's Local Network Access preflight (the Pi is a LAN address)
+)
+
 app.mount("/static", StaticFiles(directory=config.APP_DIR / "static"), name="static")
 app.include_router(pages.router)
 app.include_router(htmx.router)

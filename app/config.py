@@ -40,6 +40,16 @@ def default_day_start_hour() -> int:
         return 0
 
 
+# The Cyber Miner extension's fixed ID (from the "key" in extension/manifest.json).
+CYBER_MINER_ORIGIN = "chrome-extension://cefkpipdhcgbgpljnndingfpdpknkahf"
+
+
+def extension_origins() -> list[str]:
+    """Browser extensions allowed to call /api/ cross-origin (CORS). Comma-separated EXTENSION_ORIGINS overrides."""
+    raw = os.environ.get("EXTENSION_ORIGINS", CYBER_MINER_ORIGIN)
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
 def seed_demo() -> bool:
     """When true, demo projects and sessions are added on first run."""
     return os.environ.get("SEED_DEMO", "0").lower() in ("1", "true", "yes")
@@ -191,13 +201,17 @@ class Theme:
     overrides: dict[str, str]
 
     @property
-    def style(self) -> str:
-        """CSS custom properties for the <html style="..."> attribute."""
+    def css_vars(self) -> dict[str, str]:
+        """CSS custom property values, without the leading "--"."""
         props = dict(self.colors)
         props["accent-ink"] = ink_for(self.colors["accent"])
         props["danger-ink"] = ink_for(self.colors["danger"])
-        props |= FONT_SETS[THEMES[self.name]["fonts"]]
-        return "; ".join(f"--{k}: {v}" for k, v in props.items())
+        return props | FONT_SETS[THEMES[self.name]["fonts"]]
+
+    @property
+    def style(self) -> str:
+        """CSS custom properties for the <html style="..."> attribute."""
+        return "; ".join(f"--{k}: {v}" for k, v in self.css_vars.items())
 
 
 def get_theme(db: DBSession) -> Theme:

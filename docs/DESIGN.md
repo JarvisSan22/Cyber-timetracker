@@ -40,6 +40,7 @@ Everything hangs off a **session**: one block of time with a start, an end, a ti
 | Session | id, project_id, title, started_at, ended_at (null = running), paused_at (null = not paused), paused_sec, note, created_via (timer or manual) | Times stored in UTC |
 | SessionTag | session_id, tag_id | A session can carry several tags (Watching + YouTube) |
 | Idea | id, text, status (open, planned, done), created_at | The built-in feature-request list |
+| MinedCard | id, project_id, session_id, created_at, site, source_title, word, anki_note_id | Sentence cards sent to Anki by the Cyber Miner extension ([EXTENSION_DESIGN.md](EXTENSION_DESIGN.md)) |
 | Setting | key, value | timezone (default Asia/Tokyo), day_start_hour, week_start |
 
 **Rules**
