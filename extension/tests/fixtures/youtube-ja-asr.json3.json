@@ -1,0 +1,6 @@
+{"wireMagic":"pb3","events":[
+{"tStartMs":0,"dDurationMs":12000,"id":1,"wWinId":1},
+{"tStartMs":320,"dDurationMs":5600,"wWinId":1,"segs":[{"utf8":"えっと"},{"utf8":"今日は","tOffsetMs":400,"acAsrConf":0},{"utf8":"ですね","tOffsetMs":900,"acAsrConf":0}]},
+{"tStartMs":2900,"dDurationMs":3020,"wWinId":1,"aAppend":1,"segs":[{"utf8":"\n"}]},
+{"tStartMs":2910,"dDurationMs":6100,"wWinId":1,"segs":[{"utf8":"天気が"},{"utf8":"いい","tOffsetMs":500,"acAsrConf":0}]}
+]}

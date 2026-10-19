@@ -1,0 +1,7 @@
+{"wireMagic":"pb3","pens":[{}],"wsWinStyles":[{}],"wpWinPositions":[{}],"events":[
+{"tStartMs":0,"dDurationMs":1200,"id":1,"wpWinPosId":1,"wsWinStyleId":1},
+{"tStartMs":1500,"dDurationMs":2300,"wpWinPosId":1,"segs":[{"utf8":"今日は魔法の\n練習をします"}]},
+{"tStartMs":4000,"dDurationMs":1800,"wpWinPosId":1,"segs":[{"utf8":"よろしく"},{"utf8":"お願いします"}]},
+{"tStartMs":7000,"dDurationMs":1000,"wpWinPosId":1,"segs":[{"utf8":" \n "}]},
+{"tStartMs":9000,"dDurationMs":2000,"wpWinPosId":1,"segs":[{"utf8":"食べられなかった​"}]}
+]}

@@ -9,3 +9,6 @@ graft/
 *.db-wal
 *.db-shm
 .env
+
+# Cyber Miner: downloaded and compacted dictionaries (scripts/fetch-dicts.py)
+extension/dicts/

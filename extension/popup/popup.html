@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-preset="cyberpunk">
+<head>
+  <meta charset="utf-8">
+  <title>⌬ Cyber Miner</title>
+  <link rel="stylesheet" href="../vendor/pico.min.css">
+  <link rel="stylesheet" href="../vendor/augmented-ui.min.css">
+  <link rel="stylesheet" href="../styles/tracker.css">
+  <link rel="stylesheet" href="../styles/extension.css">
+  <script type="module" src="popup.js"></script>
+</head>
+<body class="popup">
+  <main class="container">
+    <div class="brand"><span id="brand-mark"></span><span>Cyber Miner</span></div>
+    <section class="status-list" aria-label="Connections">
+      <article class="status-row aug-panel" data-augmented-ui="tl-clip br-clip border">
+        <span class="led" id="anki-led"></span>
+        <span class="status-name">Anki</span>
+        <span class="status-detail" id="anki-detail">Checking…</span>
+      </article>
+      <article class="status-row aug-panel" data-augmented-ui="tl-clip br-clip border">
+        <span class="led" id="tracker-led"></span>
+        <span class="status-name">Cyber Tracker</span>
+        <span class="status-detail" id="tracker-detail">Checking…</span>
+      </article>
+    </section>
+    <article class="status-row aug-panel" data-augmented-ui="tl-clip br-clip border" style="margin-bottom: 0.5rem">
+      <span class="led ok"></span>
+      <span class="status-name">Cards today</span>
+      <span class="status-detail mined" id="today">–</span>
+    </article>
+    <div id="pending" hidden style="margin-bottom: 0.6rem">
+      <p class="msg" style="color: var(--warn); margin: 0 0 0.3rem"><span id="pending-count"></span> waiting for Anki</p>
+      <button class="wide" id="retry" type="button">Send waiting cards</button>
+      <p class="result" id="retry-result"></p>
+    </div>
+    <p class="muted" style="font-size: 0.85rem; margin: 0 0 0.7rem">On a YouTube video with ja/zh/it subtitles: <b>Alt+M</b> mine · <b>Alt+Shift+M</b> quick mine · <b>Alt+R</b> replay · <b>Alt+S</b> translation · <b>A/D</b> previous/next line.</p>
+    <div class="form-actions" style="margin-top: 0">
+      <button id="open-sidebar" type="button" style="flex: 1">Card side bar</button>
+      <button id="open-options" type="button" class="secondary" style="flex: 1">Options</button>
+    </div>
+  </main>
+</body>
+</html>

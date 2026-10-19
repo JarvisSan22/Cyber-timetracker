@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-preset="cyberpunk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>⌬ Cyber Miner</title>
+  <link rel="stylesheet" href="../vendor/pico.min.css">
+  <link rel="stylesheet" href="../vendor/augmented-ui.min.css">
+  <link rel="stylesheet" href="../styles/tracker.css">
+  <link rel="stylesheet" href="../styles/extension.css">
+  <link rel="stylesheet" href="sidepanel.css">
+  <script type="module" src="sidepanel.js"></script>
+</head>
+<body class="sidebar">
+  <main class="container">
+    <div class="brand"><span id="brand-mark"></span><span>Cyber Miner</span><span class="badge" id="lang" hidden></span></div>
+
+    <section id="empty" class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
+      <p>No card in progress on this tab.</p>
+      <p class="muted">On a YouTube video with ja/zh/it subtitles: press <b>Alt+M</b>, click <b>⌬</b> on the subtitle bar, or click a word in the subtitles.</p>
+    </section>
+
+    <section id="editor" hidden>
+      <div class="shot" id="shot">Capturing…</div>
+      <div class="audio-row">
+        <audio id="audio" controls hidden></audio>
+        <span class="audio-state" id="audio-state"></span>
+        <button type="button" class="secondary small-btn" id="rerecord">Re-record</button>
+      </div>
+
+      <div class="label-row"><span class="field-label">Sentence</span><span class="muted hint">click a word · drag to select</span><button type="button" class="link-btn" id="edit-sentence">✎ Edit</button></div>
+      <div class="sentence" id="sentence" lang="ja"></div>
+      <textarea id="sentence-edit" rows="2" hidden></textarea>
+
+      <div id="lookup" class="lookup" hidden></div>
+
+      <div class="grid-2 tight">
+        <label>Target word <input type="text" id="word" autocomplete="off"></label>
+        <label>Reading <input type="text" id="reading" autocomplete="off"></label>
+      </div>
+      <label>Definition <span class="muted">(one sense per line)</span>
+        <textarea id="definition" rows="3"></textarea>
+      </label>
+      <label>Translation
+        <textarea id="translation" rows="2"></textarea>
+      </label>
+      <label>Notes
+        <textarea id="notes" rows="2"></textarea>
+      </label>
+      <p class="note" id="deck"></p>
+      <div class="dup" id="dup" hidden>Already in this deck. <button type="button" class="secondary small-btn" id="send-anyway">Send anyway</button></div>
+      <p class="result error" id="error" hidden></p>
+      <div class="form-actions">
+        <button type="button" class="start-btn" id="send" data-augmented-ui="tl-clip br-clip">Send to Anki</button>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="secondary" id="discard">Discard</button>
+        <span class="muted hint">Ctrl+Enter send</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,77 @@
+/* Cyber Miner overlay on the video page. Lives in a Shadow DOM root inside the player, so page CSS cannot
+ * reach it. Colors come from the theme tokens set on :host (same names as the tracker). */
+
+:host {
+  all: initial;
+  position: absolute; inset: 0; z-index: 70; pointer-events: none;
+  /* Sizes below use cqw/cqh: percent of the player, not the browser window (vw), so the bar fits a small
+     player as well as fullscreen. */
+  container-type: size;
+  --bg: #0b0b10; --card: #15151c; --card-2: #1e1e28; --line: #3d3b1a; --text: #eef6f7; --muted: #8d9aa0;
+  --accent: #fcee0a; --accent-2: #00f0ff; --danger: #ff003c; --warn: #ff9f1c; --accent-ink: #000; --danger-ink: #fff;
+  --font-body: "Rajdhani", system-ui, sans-serif; --font-mono: "Share Tech Mono", ui-monospace, monospace;
+  --cjk: "Noto Sans CJK JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-body); color: var(--text); font-size: 16px; line-height: 1.4;
+}
+:host([hidden]) { display: none; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+/* --- subtitle bar --- */
+.bar {
+  /* Wide and flat, just above YouTube's control bar (about 48 px tall). */
+  position: absolute; left: 50%; bottom: 54px; transform: translateX(-50%);
+  width: max-content; min-width: min(40cqw, 100%); max-width: 96cqw; pointer-events: auto; text-align: center;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  padding: 0.15em 0.6em 0.2em; display: flex; gap: 0.5em; align-items: center;
+  --aug-tl: 10px; --aug-br: 10px; --aug-border-all: 1px;
+  --aug-border-bg: linear-gradient(135deg, var(--accent), var(--line) 40%, var(--line) 70%, var(--accent-2));
+}
+:host(.controls-hidden) .bar { bottom: 10px; }
+.bar.empty { visibility: hidden; }
+.lines { flex: 1; min-width: 0; }
+.primary {
+  font-size: clamp(15px, 2.6cqw, 40px); line-height: 1.3; font-weight: 600; user-select: none; cursor: pointer;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--bg) 90%, transparent);
+}
+.primary.ja, .primary.zh { font-family: "Rajdhani", var(--cjk); }
+/* Each character is a span: click one to mine with the word from there, drag to pick exactly. */
+.primary span:hover { color: var(--accent); text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); }
+.translation {
+  font-size: clamp(12px, 1.5cqw, 24px); line-height: 1.25; color: var(--accent-2); margin-top: 0.05em; white-space: pre-line; user-select: text;
+  transition: filter 0.15s;
+}
+.translation.blur { filter: blur(6px); }
+.translation.blur:hover { filter: none; }
+.mine-btn {
+  flex: none; width: 2.2em; height: 2.2em; display: grid; place-items: center; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); border: 0; padding: 0;
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+}
+.mine-btn svg { width: 1.4em; height: 1.4em; }
+.mine-btn:hover { background: color-mix(in srgb, var(--accent) 80%, var(--text)); }
+
+/* --- status chip --- */
+.chip {
+  position: absolute; top: 10px; left: 10px; pointer-events: auto;
+  display: flex; align-items: center; gap: 0.45em; padding: 0.2em 0.65em;
+  background: color-mix(in srgb, var(--bg) 85%, transparent); color: var(--muted);
+  font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.05em; text-transform: uppercase;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  opacity: 0; transition: opacity 0.2s;
+}
+:host(:hover) .chip, .chip.show { opacity: 1; }
+.chip .brand { color: var(--accent); font-weight: 700; }
+.led { width: 0.6em; height: 0.6em; background: var(--muted); clip-path: polygon(30% 0, 100% 0, 100% 70%, 70% 100%, 0 100%, 0 30%); }
+.led.ok { background: var(--accent-2); }
+.led.bad { background: var(--danger); }
+
+/* --- toast --- */
+.toast {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%); pointer-events: auto;
+  display: flex; gap: 1em; align-items: center; padding: 0.45em 1em; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  background: var(--accent); color: var(--accent-ink);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.toast.error { background: var(--danger); color: var(--danger-ink); }
+.toast button { background: none; border: 0; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; padding: 0; }

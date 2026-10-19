@@ -1,0 +1,35 @@
+{"t": "k", "k": "fare", "i": [1119, 1120]}
+{"t": "k", "k": "dire", "i": [2379, 2380]}
+{"t": "k", "k": "andare", "i": [2403]}
+{"t": "k", "k": "parlare", "i": [3235]}
+{"t": "k", "k": "amico", "i": [4692, 4693]}
+{"t": "k", "k": "fammi", "i": [14379]}
+{"t": "k", "k": "dimmelo", "i": [31723]}
+{"t": "k", "k": "parlarlo", "i": [35463]}
+{"t": "f", "f": "di'", "l": [["dire", "imperative, second-person, singular"], ["dicere", "imperative, second-person, singular"]]}
+{"t": "f", "f": "amici", "l": [["amico", "plural"]]}
+{"t": "f", "f": "amico", "l": [["amicarsi", "first-person singular present indicative of amicarsi"], ["amica", "masculine"], ["amicare", "first-person, present, singular"]]}
+{"t": "f", "f": "andiamo", "l": [["andare", "inflection of andare:; first-person plural present indicative/subjunctive"]]}
+{"t": "f", "f": "parlavamo", "l": [["parlare", "first-person plural imperfect indicative of parlare"]]}
+{"t": "f", "f": "dire", "l": [["diro", "feminine, plural"]]}
+{"t": "k", "k": "dicere", "i": [2927]}
+{"t": "k", "k": "amica", "i": [6111]}
+{"t": "k", "k": "amicare", "i": [103506]}
+{"t": "k", "k": "diro", "i": [105849]}
+{"t": "k", "k": "amicarsi", "i": [115759]}
+{"t": "e", "id": 1119, "w": "fare", "pos": "verb", "g": ["to do", "to make; to create", "to make; to bring about", "to make; to behave or act", "to make; to constitute"]}
+{"t": "e", "id": 1120, "w": "fare", "pos": "noun", "g": ["manner, way"]}
+{"t": "e", "id": 2379, "w": "dire", "pos": "verb", "g": ["to utter (produce (speech or other sounds) with one's voice)", "to recite", "to say, tell, utter", "to say, tell, utter; to talk about, discuss", "to say (indicate in a written form)"]}
+{"t": "e", "id": 2380, "w": "dire", "pos": "noun", "g": ["words"]}
+{"t": "e", "id": 2403, "w": "andare", "pos": "verb", "g": ["to go", "to be agreeable (to), to be pleasing (to) (idiomatically, to feel like, to want/like) [with a ‘person with feeling’ and di ‘thing desired’]", "to attend (school, church regularly)", "used to form the passive voice with a connotation of obligation or prescription", "to enter, to take on, to experience [with in ‘a condition, emotion, etc.’]"]}
+{"t": "e", "id": 2927, "w": "dicere", "pos": "verb", "g": ["alternative form of dire"]}
+{"t": "e", "id": 3235, "w": "parlare", "pos": "verb", "g": ["to talk, to speak", "to cant"]}
+{"t": "e", "id": 4692, "w": "amico", "pos": "noun", "g": ["friend, companion, partner", "boyfriend"]}
+{"t": "e", "id": 4693, "w": "amico", "pos": "adj", "g": ["friendly, amicable"]}
+{"t": "e", "id": 6111, "w": "amica", "pos": "noun", "g": ["girlfriend"]}
+{"t": "e", "id": 14379, "w": "fammi", "pos": "verb", "g": ["compound of fa', the second-person singular imperative form of fare, with mi"], "l": "fare"}
+{"t": "e", "id": 31723, "w": "dimmelo", "pos": "verb", "g": ["compound of di', the second-person singular imperative form of dire, with me (the conjunctive variant of mi) and lo"], "l": "dire"}
+{"t": "e", "id": 35463, "w": "parlarlo", "pos": "verb", "g": ["compound of the infinitive parlare with lo"], "l": "parlare"}
+{"t": "e", "id": 103506, "w": "amicare", "pos": "verb", "g": ["to become friends with", "to reconcile"]}
+{"t": "e", "id": 105849, "w": "diro", "pos": "adj", "g": ["cruel, dire, terrible"]}
+{"t": "e", "id": 115759, "w": "amicarsi", "pos": "verb", "g": ["to make friends (with)"]}

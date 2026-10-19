@@ -1,0 +1,105 @@
+{
+  "default": "cyberpunk",
+  "themes": {
+    "cyberpunk": {
+      "label": "Cyberpunk yellow",
+      "scheme": "dark",
+      "vars": {
+        "bg": "#0b0b10",
+        "card": "#15151c",
+        "card-2": "#1e1e28",
+        "line": "#3d3b1a",
+        "text": "#eef6f7",
+        "muted": "#8d9aa0",
+        "accent": "#fcee0a",
+        "accent-2": "#00f0ff",
+        "danger": "#ff003c",
+        "warn": "#ff9f1c",
+        "accent-ink": "#000000",
+        "danger-ink": "#ffffff",
+        "font-body": "'Rajdhani', system-ui, sans-serif",
+        "font-mono": "'Share Tech Mono', ui-monospace, monospace"
+      }
+    },
+    "netrunner": {
+      "label": "Netrunner purple",
+      "scheme": "dark",
+      "vars": {
+        "bg": "#0d0716",
+        "card": "#170c27",
+        "card-2": "#221237",
+        "line": "#3d2263",
+        "text": "#f1e8ff",
+        "muted": "#a28cc4",
+        "accent": "#b026ff",
+        "accent-2": "#ff2bd6",
+        "danger": "#ff3b6b",
+        "warn": "#ffb000",
+        "accent-ink": "#ffffff",
+        "danger-ink": "#000000",
+        "font-body": "'Rajdhani', system-ui, sans-serif",
+        "font-mono": "'Share Tech Mono', ui-monospace, monospace"
+      }
+    },
+    "terminal": {
+      "label": "Old tech green",
+      "scheme": "dark",
+      "vars": {
+        "bg": "#020a04",
+        "card": "#061409",
+        "card-2": "#0b1f10",
+        "line": "#155224",
+        "text": "#b8ffc9",
+        "muted": "#4fa86a",
+        "accent": "#33ff66",
+        "accent-2": "#ffb000",
+        "danger": "#ff4d4d",
+        "warn": "#ffb000",
+        "accent-ink": "#000000",
+        "danger-ink": "#000000",
+        "font-body": "'Share Tech Mono', ui-monospace, monospace",
+        "font-mono": "'Share Tech Mono', ui-monospace, monospace"
+      }
+    },
+    "sakura": {
+      "label": "Japan sakura",
+      "scheme": "light",
+      "vars": {
+        "bg": "#fff5f7",
+        "card": "#ffffff",
+        "card-2": "#fde8ee",
+        "line": "#f1c1cf",
+        "text": "#3b2a30",
+        "muted": "#8c6b75",
+        "accent": "#e4507c",
+        "accent-2": "#4f6fa8",
+        "danger": "#c8102e",
+        "warn": "#c77700",
+        "accent-ink": "#ffffff",
+        "danger-ink": "#ffffff",
+        "font-body": "system-ui, -apple-system, 'Segoe UI', 'Hiragino Sans', sans-serif",
+        "font-mono": "'Share Tech Mono', ui-monospace, monospace"
+      }
+    },
+    "arasaka": {
+      "label": "Arasaka red",
+      "scheme": "dark",
+      "vars": {
+        "bg": "#0a0607",
+        "card": "#160b0d",
+        "card-2": "#221013",
+        "line": "#4a1820",
+        "text": "#f5e9ea",
+        "muted": "#a3858a",
+        "accent": "#ff2a3d",
+        "accent-2": "#e8e8e8",
+        "danger": "#ff7a00",
+        "warn": "#ffc400",
+        "accent-ink": "#ffffff",
+        "danger-ink": "#000000",
+        "font-body": "'Rajdhani', system-ui, sans-serif",
+        "font-mono": "'Share Tech Mono', ui-monospace, monospace"
+      }
+    }
+  }
+}

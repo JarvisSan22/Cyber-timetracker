@@ -1,0 +1,22 @@
+{"t": "k", "k": "中", "i": [3260, 3261, 3262]}
+{"t": "k", "k": "中文", "i": [3580]}
+{"t": "k", "k": "儿", "i": [10925, 10926]}
+{"t": "k", "k": "女", "i": [29870, 29871]}
+{"t": "k", "k": "女儿", "i": [29889]}
+{"t": "k", "k": "学", "i": [31725]}
+{"t": "k", "k": "学习", "i": [31798]}
+{"t": "k", "k": "學習", "i": [31798]}
+{"t": "k", "k": "习", "i": [88390, 88391]}
+{"t": "e", "id": 3260, "s": "中", "tr": "中", "py": "Zhōng", "g": ["(bound form) China; Chinese", "surname Zhong"]}
+{"t": "e", "id": 3261, "s": "中", "tr": "中", "py": "zhōng", "g": ["within; among; in", "middle; center", "while (doing sth); during", "(dialect) OK; all right"]}
+{"t": "e", "id": 3262, "s": "中", "tr": "中", "py": "zhòng", "g": ["to hit (a target)", "to be struck by (a bullet, illness etc)", "to win (a prize or lottery)"]}
+{"t": "e", "id": 3580, "s": "中文", "tr": "中文", "py": "Zhōng wén", "g": ["Chinese language"]}
+{"t": "e", "id": 10925, "s": "儿", "tr": "兒", "py": "ér", "g": ["child", "son"]}
+{"t": "e", "id": 10926, "s": "儿", "tr": "兒", "py": "r", "g": ["non-syllabic diminutive suffix", "retroflex final"]}
+{"t": "e", "id": 29870, "s": "女", "tr": "女", "py": "nǚ", "g": ["female", "woman", "daughter"]}
+{"t": "e", "id": 29871, "s": "女", "tr": "女", "py": "rǔ", "g": ["old variant of 汝[ru3]"]}
+{"t": "e", "id": 29889, "s": "女儿", "tr": "女兒", "py": "nǚ ér", "g": ["daughter"]}
+{"t": "e", "id": 31725, "s": "学", "tr": "學", "py": "xué", "g": ["to learn", "to study", "to imitate", "science", "-ology"]}
+{"t": "e", "id": 31798, "s": "学习", "tr": "學習", "py": "xué xí", "g": ["to learn; to study"]}
+{"t": "e", "id": 88390, "s": "习", "tr": "習", "py": "Xí", "g": ["surname Xi"]}
+{"t": "e", "id": 88391, "s": "习", "tr": "習", "py": "xí", "g": ["(bound form) to practice", "to study", "habit", "custom"]}

@@ -8,7 +8,7 @@ A self-hosted web app for tracking the time you put into hobbies and learning: l
 - **Themes**: Cyberpunk yellow (default), Netrunner purple, Old tech green, Japan sakura and Arasaka red. See [Themes](#themes).
 - Installable as a PWA. No login, no cloud, no internet needed: all JS, CSS and fonts are vendored in `app/static/vendor/`.
 
-Stack: Python 3.13, FastAPI, SQLModel, SQLite (WAL), Alembic, Jinja2, HTMX 2, Alpine.js 3, Chart.js 4, Pico.css 2, augmented-ui 2, Rajdhani and Share Tech Mono fonts. No Node or build step. Design: [docs/DESIGN.md](docs/DESIGN.md). Choices made during the build: [docs/DECISIONS.md](docs/DECISIONS.md).
+Stack: Python 3.13, FastAPI, SQLModel, SQLite (WAL), Alembic, Jinja2, HTMX 2, Alpine.js 3, Chart.js 4, Pico.css 2, augmented-ui 2, Rajdhani and Share Tech Mono fonts. No Node or build step. Design: [docs/DESIGN.md](docs/DESIGN.md). Choices made during the build: [docs/DECISIONS.md](docs/DECISIONS.md). Planned Chrome extension for Anki sentence mining: [docs/EXTENSION_DESIGN.md](docs/EXTENSION_DESIGN.md).
 
 ## Run locally with uvicorn
 

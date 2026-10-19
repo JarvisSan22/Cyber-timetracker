@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-preset="cyberpunk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>⌬ Cyber Miner · Options</title>
+  <link rel="icon" href="../icons/icon-32.png" type="image/png">
+  <link rel="stylesheet" href="../vendor/pico.min.css">
+  <link rel="stylesheet" href="../vendor/augmented-ui.min.css">
+  <link rel="stylesheet" href="../styles/tracker.css">
+  <link rel="stylesheet" href="../styles/extension.css">
+  <script type="module" src="options.js"></script>
+</head>
+<body class="options">
+  <header class="topbar container">
+    <div class="brand"><span id="brand-mark"></span><span>Cyber Miner</span></div>
+    <h1 class="page-title">Options</h1>
+  </header>
+  <div class="saved-flag msg msg-ok" id="saved" hidden>Saved</div>
+
+  <main class="container">
+    <section class="panel aug-panel aug-hot" data-augmented-ui="tl-clip br-clip border">
+      <h2>Anki</h2>
+      <label>AnkiConnect URL
+        <input type="url" data-field="anki.url" placeholder="http://127.0.0.1:8765">
+      </label>
+      <small>Anki must be open with the <a href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noopener">AnkiConnect add-on</a> (code 2055492159).</small>
+      <label>API key <span class="muted">(only if you set one in AnkiConnect's config)</span>
+        <input type="password" data-field="anki.apiKey" autocomplete="off">
+      </label>
+      <label>Note type
+        <input type="text" data-field="anki.noteType">
+      </label>
+      <div class="lang-grid">
+        <label>Japanese deck <input type="text" data-field="anki.decks.ja"></label>
+        <label>Chinese deck <input type="text" data-field="anki.decks.zh"></label>
+        <label>Italian deck <input type="text" data-field="anki.decks.it"></label>
+      </div>
+      <div class="form-actions">
+        <button type="button" id="anki-connect">Connect</button>
+        <button type="button" id="anki-setup" class="secondary">Set up decks + note type</button>
+        <button type="button" id="anki-theme" class="secondary">Push theme to Anki</button>
+        <button type="button" id="anki-test" class="secondary">Send test note</button>
+      </div>
+      <p class="result" id="anki-result"></p>
+      <p class="note">Extension ID: <span class="ext-id" id="ext-id"></span>. The first Connect shows a dialog in Anki asking to allow this extension.</p>
+    </section>
+
+    <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
+      <h2>Languages</h2>
+      <p class="muted" style="margin-bottom: 0.4rem">Mine these languages:</p>
+      <div class="check-row">
+        <label><input type="checkbox" data-field="languages.targets" value="ja"> Japanese</label>
+        <label><input type="checkbox" data-field="languages.targets" value="zh"> Chinese (simplified)</label>
+        <label><input type="checkbox" data-field="languages.targets" value="it"> Italian</label>
+      </div>
+      <label>Translation subtitle language
+        <select data-field="languages.translation">
+          <option value="en">English</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
+      <h2>Dictionaries</h2>
+      <p class="muted" style="margin-bottom: 0.6rem">Used by the side bar to look up the word you click. Build the files once on this machine with
+        <code>python3 scripts/fetch-dicts.py</code>, reload the extension, then import here (takes a minute; stays in this browser).</p>
+      <div class="dict-list" id="dict-list"></div>
+      <p class="note" id="dict-credits"></p>
+    </section>
+
+    <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
+      <h2>Cards</h2>
+      <div class="grid-2">
+        <label>Audio padding before (ms) <input type="number" min="0" max="3000" step="50" data-field="cards.padBeforeMs"></label>
+        <label>Audio padding after (ms) <input type="number" min="0" max="3000" step="50" data-field="cards.padAfterMs"></label>
+        <label>MP3 bitrate
+          <select data-field="cards.mp3Kbps">
+            <option value="64">64 kbps</option>
+            <option value="96">96 kbps</option>
+            <option value="128">128 kbps</option>
+          </select>
+        </label>
+        <label>Screenshot width (px) <input type="number" min="240" max="1920" step="10" data-field="cards.screenshotWidth"></label>
+        <label>JPEG quality (0.1–1) <input type="number" min="0.1" max="1" step="0.05" data-field="cards.jpegQuality"></label>
+      </div>
+      <p class="note">Audio and screenshots are used from the next version (M2).</p>
+    </section>
+
+    <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
+      <h2>Cyber Tracker</h2>
+      <label>Tracker URL
+        <input type="url" data-field="tracker.url" placeholder="http://192.168.0.50:8686">
+      </label>
+      <small>Chrome asks once for permission to reach this address. LAN only; never expose the tracker to the internet.</small>
+      <div class="check-row">
+        <label><input type="checkbox" data-field="tracker.logWatchTime"> Log watch time</label>
+        <label><input type="checkbox" data-field="tracker.countCards"> Count mined cards</label>
+      </div>
+      <div class="form-actions">
+        <button type="button" id="tracker-test">Test connection</button>
+      </div>
+      <p class="result" id="tracker-result"></p>
+    </section>
+
+    <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
+      <h2>Theme</h2>
+      <label>Look
+        <select data-field="theme.mode" id="theme-mode">
+          <option value="tracker">Follow Cyber Tracker</option>
+        </select>
+      </label>
+      <small>"Follow Cyber Tracker" uses the theme set in the tracker's Settings (falls back to Cyberpunk yellow while the tracker is unreachable). Use "Push theme to Anki" after changing it to restyle the cards.</small>
+    </section>
+  </main>
+</body>
+</html>

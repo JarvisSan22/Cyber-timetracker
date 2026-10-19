@@ -1,0 +1,41 @@
+/* Cyber Miner pages (popup, options). Builds on tracker.css (copied from the tracker), Pico and augmented-ui. */
+
+.brand { margin: 0.2rem 0 0.4rem; }
+.brand-mark { width: 1.5rem; height: 1.5rem; }
+
+/* Popup */
+body.popup { width: 340px; min-height: 0; }
+.popup .container { padding: 0.6rem 0.9rem 0.8rem; }
+.status-list { display: grid; gap: 0.5rem; margin: 0.4rem 0 0.8rem; }
+.status-row {
+  display: grid; grid-template-columns: auto 1fr; gap: 0.1rem 0.6rem; align-items: center; margin: 0;
+  background: var(--card); padding: 0.55rem 0.75rem;
+}
+.status-name { font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.85rem; }
+.status-detail { grid-column: 2; color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
+.led { width: 0.65rem; height: 0.65rem; background: var(--muted); clip-path: polygon(30% 0, 100% 0, 100% 70%, 70% 100%, 0 100%, 0 30%); }
+.led.ok { background: var(--accent-2); box-shadow: 0 0 6px var(--accent-2); }
+.led.bad { background: var(--danger); }
+.popup .wide { width: 100%; margin: 0; }
+
+/* Options */
+.options h2 { margin-top: 0; }
+.options label { font-weight: 600; }
+.options small { display: block; color: var(--muted); font-weight: 500; margin-top: -0.5rem; margin-bottom: 0.7rem; }
+.lang-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0 0.8rem; }
+.check-row { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; margin-bottom: 0.8rem; }
+.check-row label { display: inline-flex; align-items: center; gap: 0.4rem; margin: 0; }
+.check-row input { margin: 0; }
+.saved-flag { position: fixed; top: 0.8rem; right: 1rem; z-index: 10; }
+.result { margin: 0.6rem 0 0; font-size: 0.95rem; white-space: pre-line; }
+.result.ok { color: var(--accent-2); }
+.result.error { color: var(--danger); }
+.result.busy { color: var(--muted); }
+.ext-id { font-family: var(--font-mono); color: var(--accent-2); user-select: all; }
+.status-detail.mined { font-family: var(--font-mono); color: var(--accent); font-size: 1.1rem; }
+.dict-list { display: grid; gap: 0.5rem; }
+.dict-row { margin: 0; padding: 0.6rem 0.75rem; background: var(--card-2); display: grid; gap: 0.3rem; }
+.dict-status { color: var(--muted); font-size: 0.9rem; }
+.dict-row progress { margin: 0; }
+.dict-actions { display: flex; gap: 0.4rem; }
+.dict-actions button { width: auto; margin: 0; padding: 0.3rem 0.8rem; font-size: 0.85rem; }

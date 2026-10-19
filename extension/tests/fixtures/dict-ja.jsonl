@@ -1,0 +1,54 @@
+{"t": "k", "k": "飲む", "i": [1169870]}
+{"t": "k", "k": "は", "i": [1171680, 1313000, 1369820, 1471120, 1546550, 2028920, 2069620, 2260970, 2525520, 2750580, 2844141]}
+{"t": "k", "k": "高い", "i": [1283190]}
+{"t": "k", "k": "食べる", "i": [1358280]}
+{"t": "k", "k": "の", "i": [1469800, 1537250, 2578110, 2671670]}
+{"t": "k", "k": "勉強", "i": [1512670]}
+{"t": "k", "k": "魔法", "i": [1524230]}
+{"t": "k", "k": "来る", "i": [1547720, 1591270]}
+{"t": "k", "k": "練習", "i": [1559160]}
+{"t": "k", "k": "今日", "i": [1579110]}
+{"t": "k", "k": "昨日", "i": [1579260]}
+{"t": "k", "k": "ありがとう", "i": [1586820]}
+{"t": "k", "k": "食べられる", "i": [2765050]}
+{"t": "p", "w": "は", "r": "", "p": [1]}
+{"t": "p", "w": "飲む", "r": "のむ", "p": [1]}
+{"t": "p", "w": "高い", "r": "たかい", "p": [2]}
+{"t": "p", "w": "今日", "r": "きょう", "p": [1]}
+{"t": "p", "w": "今日", "r": "こんち", "p": [1]}
+{"t": "p", "w": "今日", "r": "こんにち", "p": [1]}
+{"t": "p", "w": "昨日", "r": "きのう", "p": [2]}
+{"t": "p", "w": "昨日", "r": "さくじつ", "p": [2]}
+{"t": "p", "w": "食べる", "r": "たべる", "p": [2]}
+{"t": "p", "w": "勉強", "r": "べんきょう", "p": [0]}
+{"t": "p", "w": "魔法", "r": "まほう", "p": [0]}
+{"t": "p", "w": "来る", "r": "きたる", "p": [2]}
+{"t": "p", "w": "来る", "r": "くる", "p": [1]}
+{"t": "p", "w": "練習", "r": "れんしゅう", "p": [0]}
+{"t": "e", "id": 1169870, "k": [["飲む", 1], ["呑む", 1]], "r": [["のむ", 1, ["*"]]], "s": [{"p": ["v5m", "vt"], "g": ["to drink", "to swallow", "to take (medicine)"]}, {"p": ["v5m", "vt"], "g": ["to smoke (tobacco)"]}, {"p": ["v5m", "vt"], "g": ["to swallow up", "to engulf"]}, {"p": ["v5m", "vt"], "g": ["to suppress (one's anger, bitter feelings, etc.)", "to keep down", "to hold back", "to swallow (one's tears)"]}, {"p": ["v5m", "vt"], "g": ["to accept (a demand, conditions, etc.)", "to agree to"]}], "c": 1}
+{"t": "e", "id": 1171680, "k": [["羽", 1], ["羽根", 1]], "r": [["はね", 1, ["*"]], ["は", 0, ["羽"]]], "s": [{"p": ["n"], "g": ["feather", "plume", "down"]}, {"p": ["n"], "g": ["wing"]}, {"p": ["n"], "g": ["blade (of a fan, propeller, etc.)"]}, {"p": ["n"], "g": ["shuttlecock (in badminton)"]}, {"p": ["n"], "g": ["shuttlecock (in hanetsuki)"]}], "c": 1}
+{"t": "e", "id": 1283190, "k": [["高い", 1]], "r": [["たかい", 1, ["*"]]], "s": [{"p": ["adj-i"], "g": ["high", "tall"]}, {"p": ["adj-i"], "g": ["expensive", "high-priced"]}, {"p": ["adj-i"], "g": ["high (level)", "above average (in degree, quality, etc.)"]}, {"p": ["adj-i"], "g": ["loud"]}, {"p": ["adj-i"], "g": ["high-pitched", "shrill"]}], "c": 1}
+{"t": "e", "id": 1313000, "k": [["歯", 1], ["齒", 0]], "r": [["は", 1, ["*"]]], "s": [{"p": ["n"], "g": ["tooth", "teeth"]}, {"p": ["n"], "g": ["tooth (of a comb, saw, etc.)", "cog"]}, {"p": ["n"], "g": ["support (of a geta)"]}], "c": 1}
+{"t": "e", "id": 1358280, "k": [["食べる", 1]], "r": [["たべる", 1, ["*"]]], "s": [{"p": ["v1", "vt"], "g": ["to eat"]}, {"p": ["v1", "vt"], "g": ["to live on (e.g. a salary)", "to live off", "to subsist on"]}], "c": 1}
+{"t": "e", "id": 1369820, "k": [["刃", 1]], "r": [["は", 1, ["*"]]], "s": [{"p": ["n"], "g": ["edge (of a knife or sword)", "blade"]}, {"p": ["n"], "g": ["prong (of an electrical plug)"]}], "c": 1}
+{"t": "e", "id": 1469800, "k": [], "r": [["の", 1, ["*"]]], "s": [{"p": ["prt"], "g": ["indicates possessive"]}, {"p": ["prt"], "g": ["nominalizes verbs and adjectives"]}, {"p": ["prt"], "g": ["substitutes for \"ga\" in subordinate phrases"]}, {"p": ["prt"], "g": ["indicates a confident conclusion"]}, {"p": ["prt"], "g": ["indicates emotional emphasis"]}], "c": 1}
+{"t": "e", "id": 1471120, "k": [["派", 1]], "r": [["は", 1, ["*"]]], "s": [{"p": ["n", "n-suf"], "g": ["group", "faction", "clique", "coterie"]}, {"p": ["n", "n-suf"], "g": ["(political) faction", "wing", "camp"]}, {"p": ["n", "n-suf"], "g": ["school (of thought, painting, etc.)"]}, {"p": ["n", "n-suf"], "g": ["sect", "denomination"]}], "c": 1}
+{"t": "e", "id": 1512670, "k": [["勉強", 1]], "r": [["べんきょう", 1, ["*"]]], "s": [{"p": ["n", "vs", "vt"], "g": ["study"]}, {"p": ["n", "vs", "vi"], "g": ["diligence", "working hard"]}, {"p": ["n"], "g": ["experience", "knowledge", "lesson (for the future)"]}, {"p": ["n", "vs", "vt", "vi"], "g": ["discount", "price reduction"]}], "c": 1}
+{"t": "e", "id": 1524230, "k": [["魔法", 1]], "r": [["まほう", 1, ["*"]]], "s": [{"p": ["n", "adj-no"], "g": ["magic", "witchcraft", "sorcery", "spell"]}], "c": 1}
+{"t": "e", "id": 1537250, "k": [["野", 1], ["埜", 0]], "r": [["の", 1, ["*"]]], "s": [{"p": ["n"], "g": ["field", "plain"]}, {"p": ["n"], "g": ["hidden interior part (of a structure or object)"]}, {"p": ["n-pref"], "g": ["wild (of an animal or plant)"]}], "c": 1}
+{"t": "e", "id": 1546550, "k": [["葉", 1]], "r": [["は", 1, ["*"]]], "s": [{"p": ["n"], "g": ["leaf", "blade (of grass)", "(pine) needle", "frond"]}], "c": 1}
+{"t": "e", "id": 1547720, "k": [["来る", 1]], "r": [["くる", 1, ["*"]]], "s": [{"p": ["vk", "vi"], "g": ["to come (spatially or temporally)", "to approach", "to arrive"]}, {"p": ["vk", "vi", "aux-v"], "g": ["to come back", "to do ... and come back"]}, {"p": ["vk", "vi", "aux-v"], "g": ["to come to be", "to become", "to get", "to grow"]}, {"p": ["vk", "vi"], "g": ["to come from", "to be caused by", "to derive from"]}, {"p": ["vk", "vi"], "g": ["to come to (e.g. \"when it comes to spinach ...\")"]}], "c": 1}
+{"t": "e", "id": 1559160, "k": [["練習", 1]], "r": [["れんしゅう", 1, ["*"]]], "s": [{"p": ["n", "vs", "vt"], "g": ["practice", "training", "drill", "(an) exercise"]}], "c": 1}
+{"t": "e", "id": 1579110, "k": [["今日", 1]], "r": [["きょう", 1, ["*"]], ["こんにち", 1, ["*"]], ["こんち", 0, ["*"]], ["こんじつ", 0, ["*"]]], "s": [{"p": ["n", "adv"], "g": ["today", "this day"]}, {"p": ["n", "adv"], "g": ["these days", "recently", "nowadays"]}], "c": 1}
+{"t": "e", "id": 1579260, "k": [["昨日", 1]], "r": [["きのう", 1, ["*"]], ["さくじつ", 1, ["*"]]], "s": [{"p": ["n", "adv"], "g": ["yesterday"]}], "c": 1}
+{"t": "e", "id": 1586820, "k": [["有難う", 0], ["有り難う", 0]], "r": [["ありがとう", 1, ["*"]]], "s": [{"p": ["int"], "g": ["thank you", "thanks"]}], "c": 1}
+{"t": "e", "id": 1591270, "k": [["来る", 0], ["来たる", 0]], "r": [["きたる", 0, ["*"]]], "s": [{"p": ["adj-pn"], "g": ["next (e.g. \"next April\")", "forthcoming", "coming"]}, {"p": ["v5r", "vi"], "g": ["to come", "to arrive", "to be due to"]}], "c": 0}
+{"t": "e", "id": 2028920, "k": [], "r": [["は", 1, ["*"]]], "s": [{"p": ["prt"], "g": ["indicates sentence topic"]}, {"p": ["prt"], "g": ["indicates contrast with another option (stated or unstated)"]}, {"p": ["prt"], "g": ["adds emphasis"]}], "c": 1}
+{"t": "e", "id": 2069620, "k": [], "r": [["はあ", 0, ["*"]], ["はー", 0, ["*"]], ["は", 0, ["*"]], ["はぁ", 0, ["*"]], ["はあっ", 0, ["*"]]], "s": [{"p": ["int"], "g": ["yes", "indeed", "well"]}, {"p": ["int"], "g": ["ha!"]}, {"p": ["int"], "g": ["what?", "huh?"]}, {"p": ["int"], "g": ["sigh"]}], "c": 0}
+{"t": "e", "id": 2260970, "k": [["翳", 0], ["刺羽", 0], ["指羽", 0]], "r": [["さしは", 0, ["*"]], ["さしば", 0, ["*"]], ["えい", 0, ["翳"]], ["は", 0, ["翳"]]], "s": [{"p": ["n"], "g": ["large fan-shaped object held by an attendant and used to conceal the face of a noble, etc."]}], "c": 0}
+{"t": "e", "id": 2525520, "k": [["破", 0]], "r": [["は", 0, ["*"]]], "s": [{"p": ["n"], "g": ["middle section of a song (in gagaku or noh)"]}], "c": 0}
+{"t": "e", "id": 2578110, "k": [["箆", 0], ["篦", 0]], "r": [["の", 0, ["*"]]], "s": [{"p": ["n"], "g": ["shaft (of an arrow; made of bamboo)"]}], "c": 0}
+{"t": "e", "id": 2671670, "k": [["幅", 0], ["布", 0]], "r": [["の", 0, ["*"]]], "s": [{"p": ["n", "n-suf", "ctr"], "g": ["unit of measurement for cloth breadth (30-38 cm)"]}], "c": 0}
+{"t": "e", "id": 2750580, "k": [["覇", 0]], "r": [["は", 0, ["*"]]], "s": [{"p": ["n"], "g": ["supremacy (over a nation)", "hegemony", "domination", "leadership"]}, {"p": ["n"], "g": ["championship", "victory"]}], "c": 0}
+{"t": "e", "id": 2765050, "k": [["食べられる", 0]], "r": [["たべられる", 0, ["*"]]], "s": [{"p": ["v1", "vi"], "g": ["to be able to eat"]}, {"p": ["adj-pn"], "g": ["to be edible", "to be good to eat"]}], "c": 0}
+{"t": "e", "id": 2844141, "k": [["波", 0]], "r": [["は", 0, ["*"]]], "s": [{"p": ["ctr"], "g": ["counter for waves (of a repeated occurrence)"]}], "c": 0}
