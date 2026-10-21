@@ -44,6 +44,10 @@ export const DEFAULTS = {
     // Where the subtitle bar was moved to: {x, y} in % of the player (shared/position.js); null = default spot.
     /** @type {{x: number, y: number} | null} */
     position: null,
+    // Translation line under the subtitle: "blur" (shows on hover), "show" (always) or "hide".
+    // Alt+S switches it for the current page; this is how every page starts.
+    /** @type {"blur" | "show" | "hide"} */
+    translation: "blur",
   },
 };
 

@@ -61,6 +61,7 @@ let stopSubtitles = () => {};
 
 export async function start() {
   state.settings = await loadSettings();
+  state.translationMode = state.settings.overlay.translation;
   overlay = createOverlay(
     {
       onMine: () => {
@@ -97,6 +98,11 @@ export async function start() {
     // Also how a move in another tab, or "Reset subtitle position" in the popup, reaches this tab.
     if (changes.settings)
       loadSettings().then((s) => {
+        // A new choice in Options applies at once; an Alt+S switch stays until then.
+        if (s.overlay.translation !== state.settings?.overlay.translation) {
+          state.translationMode = s.overlay.translation;
+          overlay.setTranslationMode(state.translationMode);
+        }
         state.settings = s;
         overlay.setPosition(s.overlay.position);
       });

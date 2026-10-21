@@ -162,6 +162,7 @@ All in the extension; the tracker endpoints already existed (sessions) or came w
 - **Press and hold for 0.4 s** anywhere on the bar picks it up (a line fills along its bottom edge while holding); it then follows the pointer (pointer capture, so a fast pointer leaving the bar keeps it). Moving more than 6 px before that is a text drag, and a quick click a word pick, as before; releasing a moved bar never picks a word.
 - **Position** is `{x, y}` in % of the player: x = the bar's centre, y = its bottom edge from the player's bottom, so the bar grows upwards when a line wraps or the translation shows. It is clamped so the whole bar stays inside the player, again whenever the player is resized (theater mode, fullscreen). A moved bar stays put when YouTube's controls hide; the default spot still drops to the bottom.
 - **One position for every video**, saved on release in the synced settings (`overlay.position`, null = default). Every open YouTube tab follows the settings change.
+- **Moves are followed on the window** (capture phase) while the bar is held, not only on the bar: Netflix takes the pointer for its own player element, so the bar got no moves there and could not be dragged.
 - **Reset**: ⟲ on the bar (shown on hover once moved) and "Reset subtitle position" in the popup (shown while moved), in case the bar ends up hard to grab.
 
 ## Cyber Miner M4a: site adapters
@@ -198,3 +199,13 @@ Groundwork for Netflix with no change in behaviour on YouTube.
 - **Chrome's "Share this tab" prompt** (`getDisplayMedia` with `preferCurrentTab`, from the content script) instead of `chrome.tabCapture`: tabCapture needs the same activeTab grant that did not work for screenshots, and no install-time or Options permission turns either on. The prompt appears on the first click on ⌬ or a word in a Netflix tab (it needs a click in the page; Alt+M alone cannot show it, and recording then says to click ⌬ once). "Also share tab audio" must stay ticked.
 - **One stream per page**: the video track is stopped at once, the audio track is kept until the tab closes or reloads or "Stop sharing" is pressed, and every recording and re-recording in the tab uses it. `suppressLocalAudioPlayback: false`, so the video stays audible.
 - **Same recording flow as YouTube**: `recordRange` gets the shared tab's audio tracks (adapter `audio: "tab"`) instead of `video.captureStream()`, replays the clip in real time through Netflix's player seek and leaves the stream open. Then the same MP3 encoding. Everything the tab plays is recorded, so a muted tab gives a silent clip.
+
+## Cyber Miner: translation line setting
+
+- **Options → Languages → "Translation line under the subtitle"**: blurred until hover (default), always shown, or hidden (`overlay.translation`, synced). Every page starts with it; Alt+S still cycles the three for the current page, and a new choice in Options applies to open tabs at once.
+
+## Cyber Miner: audio player
+
+- A slider to retake the picture at another moment of the clip was tried and taken out again (it broke the pictures); the picture is taken when mining, as before.
+
+- **Audio player** in the app's style instead of Chrome's `<audio controls>`: ⌬-yellow play/pause button with a cut corner, a gradient progress bar (click to jump), mono time readout; Space plays/pauses outside text fields. Theme tokens only, so it follows the tracker theme.

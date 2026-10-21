@@ -1,14 +1,86 @@
+**English** | [日本語](README.ja.md)
+
 # ⌬ Cyber Tracker
 
 A self-hosted web app for tracking the time you put into hobbies and learning: languages, painting, coding, anything. It runs as one small Docker container on a Raspberry Pi, and you open it from any phone or laptop on your home network. The default look is a Cyberpunk 2077 style game UI, with four more themes and your own colors.
+
+![Cyber Tracker timer page](docs/images/readme-1.png)
 
 - **Timer**: pick a project, tap a tag, press Start. Several timers can run at once, across projects. Pause, resume, stop, restart, edit, and delete with undo. Past sessions can be added by hand.
 - **Statistics**: total time, session count, longest session, day record, current streak, a bar chart (7 days, 30 days, 12 months, all time) with your daily goal, time per tag, and a one-year heatmap.
 - **Projects** with starter tag sets (language, art, coding), **Ideas** (your own feature-request list) and **Settings** (timezone, day start hour, theme and colors, CSV/JSON export, JSON import, database backup).
 - **Themes**: Cyberpunk yellow (default), Netrunner purple, Old tech green, Japan sakura and Arasaka red. See [Themes](#themes).
 - Installable as a PWA. No login, no cloud, no internet needed: all JS, CSS and fonts are vendored in `app/static/vendor/`.
+- **⌬ Cyber Miner**, a Chrome extension in the same style: mines Anki sentence cards from YouTube and Netflix subtitles and logs watch time and mined cards here. See [Cyber Miner](#-cyber-miner-chrome-extension).
 
-Stack: Python 3.13, FastAPI, SQLModel, SQLite (WAL), Alembic, Jinja2, HTMX 2, Alpine.js 3, Chart.js 4, Pico.css 2, augmented-ui 2, Rajdhani and Share Tech Mono fonts. No Node or build step. Design: [docs/DESIGN.md](docs/DESIGN.md). Choices made during the build: [docs/DECISIONS.md](docs/DECISIONS.md). Planned Chrome extension for Anki sentence mining: [docs/EXTENSION_DESIGN.md](docs/EXTENSION_DESIGN.md).
+![Statistics page](docs/images/readme-2.png)
+
+Stack: Python 3.13, FastAPI, SQLModel, SQLite (WAL), Alembic, Jinja2, HTMX 2, Alpine.js 3, Chart.js 4, Pico.css 2, augmented-ui 2, Rajdhani and Share Tech Mono fonts. No Node or build step. Design: [docs/DESIGN.md](docs/DESIGN.md). Choices made during the build: [docs/DECISIONS.md](docs/DECISIONS.md). Chrome extension design: [docs/EXTENSION_DESIGN.md](docs/EXTENSION_DESIGN.md).
+
+## ⌬ Cyber Miner (Chrome extension)
+
+A Chrome extension in the same style, in [`extension/`](extension/README.md). It turns **YouTube** and **Netflix** subtitles into **Anki** sentence cards and logs your watch time and mined cards in Cyber Tracker. Languages: Japanese, Chinese (simplified) and Italian, with an English translation line.
+
+![Italian lesson on YouTube: Cyber Miner's subtitle bar on the video and the card editor in the side panel](docs/images/readme-4.png)
+
+**Subtitle bar**
+- Shows the subtitle line in its own bar over the video, with the English line under it: blurred until you hover it, always shown or hidden (Options, or Alt+S).
+- Click a word to make a card with it, drag to pick exact characters, or press ⌬ for the whole line.
+- A / D jump between lines, Alt+R replays one.
+- Hold the bar for 0.4 s to move it anywhere in the video; ⟲ puts it back.
+- Fits a small player, theater mode and fullscreen.
+
+**Card editor in the side panel**
+- **Picture**: the video frame.
+- **Audio**: the line recorded as MP3, with its own player.
+- **Clip**: move the start or end by 0.5 s, or add the previous / next line; it records again.
+- **Word**: the sentence with the picked word highlighted, and an offline dictionary entry:
+  - Japanese: JMdict with reading, pitch accent and deinflection.
+  - Chinese: CC-CEDICT with pinyin.
+  - Italian: Wiktionary with inflected forms.
+- **Send to Anki** (Ctrl+Enter) through AnkiConnect. Duplicates are flagged; cards wait while Anki is closed.
+- **Quick mine** (Alt+Shift+M) sends a line without opening the panel.
+
+<p align="center"><img src="docs/images/readme-5.png" alt="Card editor for a Japanese line: picture, audio, picked word with reading and pitch accent" width="420"></p>
+
+**The card in Anki**
+- Its own **Cyber Sentence** note type, one deck per language, styled like the tracker.
+- Sentence with the word highlighted, translation, audio, picture.
+- The word with furigana, a pitch accent graph and the definition.
+- A source line that links back to that moment of the video.
+
+![A Cyber Sentence card in Anki](docs/images/readme-7.png)
+
+**Netflix**
+- The same bar and editor.
+- Subtitles come from Netflix's own track list; the audio language picks the track.
+- The picture is a screenshot cropped to the video (one-time permission in Options).
+- The audio comes from Chrome's "Share this tab" prompt, once per tab.
+
+![Japanese episode on Netflix with the card editor open (purple theme)](docs/images/readme-6.png)
+
+**Watch time and the popup**
+- Each video with a ja/zh/it track becomes a watch session in Cyber Tracker under that language's project, tagged "Watching" + "YouTube" / "Netflix".
+- The session pauses with the video and during ads. Mined cards are counted on the Statistics page.
+- The popup shows:
+  - whether Anki and the tracker are connected;
+  - this tab's session;
+  - cards mined today;
+  - "Don't track this tab".
+
+<p align="center"><img src="docs/images/readme-8.png" alt="Cyber Miner toolbar popup" width="420"></p>
+
+**Options**
+- Anki connection, decks and note type setup.
+- Languages and the translation line.
+- Dictionary import.
+- Card audio and picture settings.
+- Tracker address with a project per language.
+- Theme: it follows Cyber Tracker's live theme or a preset.
+
+<p align="center"><img src="docs/images/readme-9.png" alt="Cyber Miner options: Anki, languages, dictionaries" width="520"></p>
+
+Setup (Chrome, AnkiConnect, dictionaries, tracker, Netflix), all keys and the to-do list: [extension/README.md](extension/README.md).
 
 ## Run locally with uvicorn
 
@@ -145,6 +217,8 @@ There is no login. The app is meant for your home network only:
 
 ## Themes
 
+![Theme settings](docs/images/readme-3.png)
+
 Pick a theme in **Settings > Theme**. Every color can be changed with the color pickers below the theme cards. Changes preview live on the whole page; **Save theme** keeps them, **Reset colors to preset** puts the theme's own colors back.
 
 | Theme | Look | Font |
@@ -219,6 +293,10 @@ app/static/           app.css (themes), app.js, PWA files, icons, vendor/ librar
 migrations/           Alembic
 scripts/install-pi.sh one-time Raspberry Pi setup
 scripts/backup.sh     nightly backup with retention
+scripts/fetch-dicts.py   Cyber Miner dictionaries (download + compact)
+scripts/sync-extension.py copy the tracker's CSS, fonts and themes into extension/
+extension/            Cyber Miner Chrome extension (own README)
+docs/images/          README screenshots (readme-<n>.png)
 tests/                pytest
 ```
 

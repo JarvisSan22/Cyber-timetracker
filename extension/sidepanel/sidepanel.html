@@ -23,7 +23,12 @@
     <section id="editor" hidden>
       <div class="shot" id="shot">Capturing…</div>
       <div class="audio-row">
-        <audio id="audio" controls hidden></audio>
+        <audio id="audio" hidden></audio>
+        <div class="player" id="player" hidden>
+          <button type="button" class="play-btn" id="play" title="Play (Space)" aria-label="Play">▶</button>
+          <div class="track" id="track" title="Click to jump"><div class="fill" id="fill"></div></div>
+          <span class="time" id="time"></span>
+        </div>
         <span class="audio-state" id="audio-state"></span>
         <button type="button" class="secondary small-btn" id="rerecord">Re-record</button>
       </div>

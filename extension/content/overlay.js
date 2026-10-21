@@ -140,14 +140,45 @@ export function createOverlay(handlers, sheets) {
     if (hold.moving && bar.hasPointerCapture(hold.id)) bar.releasePointerCapture(hold.id);
     bar.classList.remove("holding", "moving");
     hold = null;
+    for (const [type, fn] of windowListeners) window.removeEventListener(type, fn, true);
   }
+
+  // While the bar is held, moves and the release are followed on the whole window (capture phase): a
+  // player can take the pointer for its own element (Netflix does), and then the bar itself gets no moves.
+  /** @param {PointerEvent} e */
+  function onMove(e) {
+    if (!hold || e.pointerId !== hold.id) return;
+    if (!hold.moving) {
+      if (Math.hypot(e.clientX - hold.x0, e.clientY - hold.y0) > HOLD_SLOP_PX) cancelHold(); // a text drag
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation(); // the page does not see a drag over the video
+    applyPosition(positionFromPointer(e.clientX, e.clientY, hold.grab, playerBox(), bar.getBoundingClientRect()));
+  }
+  /** @param {PointerEvent} e */
+  function onUp(e) {
+    if (!hold || e.pointerId !== hold.id) return;
+    justMoved = hold.moving;
+    if (justMoved) e.stopPropagation();
+    if (justMoved && position) handlers.onMoved(position);
+    cancelHold();
+  }
+  /** @type {[string, (e: any) => void][]} */
+  const windowListeners = [
+    ["pointermove", onMove],
+    ["pointerup", onUp],
+    ["pointercancel", () => cancelHold()],
+  ];
 
   bar.addEventListener("pointerdown", (/** @type {PointerEvent} */ e) => {
     if (e.button !== 0 || /** @type {HTMLElement} */ (e.target).closest(".mine-btn, .reset-btn")) return;
+    cancelHold();
     justMoved = false;
     const box = bar.getBoundingClientRect();
     const id = e.pointerId;
     hold = { x0: e.clientX, y0: e.clientY, id, moving: false, grab: { x: e.clientX - box.left, y: e.clientY - box.top }, timer: 0 };
+    for (const [type, fn] of windowListeners) window.addEventListener(type, fn, true);
     bar.classList.add("holding");
     hold.timer = setTimeout(() => {
       if (!hold || hold.id !== id) return;
@@ -155,32 +186,13 @@ export function createOverlay(handlers, sheets) {
       downAt = null; // the press became a move, not a word pick
       bar.classList.remove("holding");
       bar.classList.add("moving");
-      bar.setPointerCapture(id); // keep following a fast pointer that leaves the bar
+      try {
+        bar.setPointerCapture(id); // keep following a fast pointer that leaves the bar
+      } catch {
+        // the pointer is already gone; the window listeners still follow it
+      }
     }, HOLD_MS);
   });
-
-  bar.addEventListener("pointermove", (/** @type {PointerEvent} */ e) => {
-    if (!hold || e.pointerId !== hold.id) return;
-    if (!hold.moving) {
-      if (Math.hypot(e.clientX - hold.x0, e.clientY - hold.y0) > HOLD_SLOP_PX) cancelHold(); // a text drag
-      return;
-    }
-    const box = bar.getBoundingClientRect();
-    applyPosition(positionFromPointer(e.clientX, e.clientY, hold.grab, playerBox(), box));
-  });
-
-  // Capture phase, so the flag is set before the text's own pointerup handler runs.
-  bar.addEventListener(
-    "pointerup",
-    (/** @type {PointerEvent} */ e) => {
-      if (!hold || e.pointerId !== hold.id) return;
-      justMoved = hold.moving;
-      if (justMoved && position) handlers.onMoved(position);
-      cancelHold();
-    },
-    true,
-  );
-  bar.addEventListener("pointercancel", () => cancelHold());
 
   // The player changes size (theater mode, fullscreen, window): keep a moved bar inside it.
   new ResizeObserver(() => {

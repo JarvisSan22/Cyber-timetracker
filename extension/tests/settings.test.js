@@ -24,6 +24,8 @@ test("a moved subtitle bar position survives the merge; null means the default s
   assert.deepEqual(mergeDefaults(DEFAULTS, { overlay: { position: { x: 30, y: 60 } } }).overlay.position, { x: 30, y: 60 });
   assert.equal(mergeDefaults(DEFAULTS, { overlay: { position: null } }).overlay.position, null);
   assert.equal(mergeDefaults(DEFAULTS, {}).overlay.position, null);
+  assert.equal(mergeDefaults(DEFAULTS, {}).overlay.translation, "blur");
+  assert.equal(mergeDefaults(DEFAULTS, { overlay: { translation: "show" } }).overlay.translation, "show");
 });
 
 test("dotted paths", () => {

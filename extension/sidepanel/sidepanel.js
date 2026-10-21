@@ -9,6 +9,7 @@ import { formatTimeTenths } from "../shared/subtitles.js";
 import { forgetInstalled, hasDictionary, lookupAt } from "../shared/dictionary/index.js";
 
 const $ = (/** @type {string} */ id) => /** @type {any} */ (document.getElementById(id));
+const audioEl = /** @type {HTMLAudioElement} */ ($("audio"));
 
 /**
  * @typedef {object} DraftRecord
@@ -121,10 +122,12 @@ function showMedia({ draft, meta }) {
     if (audioSrc) audio.src = audioSrc;
     else audio.removeAttribute("src");
   }
-  audio.hidden = !ready;
+  $("player").hidden = !ready;
+  $("audio-state").hidden = Boolean(ready);
   $("audio-state").textContent = ready
-    ? `${meta.audio.seconds?.toFixed(1) ?? ""} s`
+    ? ""
     : { recording: "Recording…", encoding: "Encoding MP3…", error: meta.audio.message ?? "No audio" }[meta.audio.state] ?? "";
+  paintPlayer();
   const busy = meta.audio.state === "recording" || meta.audio.state === "encoding";
   $("rerecord").disabled = busy;
   $("send").disabled = busy;
@@ -161,6 +164,36 @@ function showClip(/** @type {DraftRecord} */ { meta }) {
     box.append(Object.assign(document.createElement("span"), { className: "warn", textContent: ` · replay stopped at ${t(played[1])}` }));
   }
 }
+
+// --- audio player ---
+
+function paintPlayer() {
+  const duration = Number.isFinite(audioEl.duration) ? audioEl.duration : 0;
+  const at = audioEl.currentTime;
+  $("fill").style.width = duration ? `${Math.min(100, (at / duration) * 100)}%` : "0";
+  $("time").textContent = `${at.toFixed(1)} / ${duration.toFixed(1)} s`;
+  const playing = !audioEl.paused && !audioEl.ended;
+  $("play").textContent = playing ? "❚❚" : "▶";
+  $("play").classList.toggle("playing", playing);
+  $("play").setAttribute("aria-label", playing ? "Pause" : "Play");
+}
+for (const type of ["timeupdate", "play", "pause", "ended", "loadedmetadata", "emptied"]) audioEl.addEventListener(type, paintPlayer);
+$("play").addEventListener("click", () => {
+  if (audioEl.paused || audioEl.ended) audioEl.play().catch(() => {});
+  else audioEl.pause();
+});
+$("track").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  const box = $("track").getBoundingClientRect();
+  if (!Number.isFinite(audioEl.duration) || !box.width) return;
+  audioEl.currentTime = Math.max(0, Math.min(1, (e.clientX - box.left) / box.width)) * audioEl.duration;
+});
+// Space plays/pauses unless typing in a field.
+document.addEventListener("keydown", (e) => {
+  const el = /** @type {HTMLElement} */ (e.target);
+  if (e.key !== " " || $("player").hidden || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(el.tagName)) return;
+  e.preventDefault();
+  $("play").click();
+});
 
 // Clip controls: +line goes at once; start/end nudges are gathered for a moment so several clicks
 // record once.

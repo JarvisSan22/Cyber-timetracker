@@ -6,7 +6,18 @@ body.sidebar { min-height: 100vh; }
 .shot { width: 100%; aspect-ratio: 16 / 9; background: var(--card-2); display: grid; place-items: center; color: var(--muted); font-size: 0.85rem; overflow: hidden; margin-bottom: 0.5rem; }
 .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .audio-row { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.7rem; }
-.audio-row audio { flex: 1; min-width: 0; height: 34px; }
+/* Audio player in the app's style (replaces Chrome's own controls). */
+.player { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.5rem; height: 34px; padding: 0 0.5rem 0 0; background: var(--card); border-left: 3px solid var(--accent); }
+.play-btn {
+  flex: none; width: 34px; height: 34px; margin: 0; padding: 0; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 0; font-size: 0.85rem; line-height: 1; cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+}
+.play-btn:hover { background: color-mix(in srgb, var(--accent) 80%, var(--text)); }
+.play-btn.playing { background: var(--accent-2); }
+.track { flex: 1; min-width: 0; height: 6px; background: var(--card-2); position: relative; cursor: pointer; }
+.track .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); box-shadow: 0 0 6px color-mix(in srgb, var(--accent-2) 60%, transparent); }
+.time { flex: none; font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); }
 .audio-state { flex: 1; font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); }
 .small-btn { width: auto; margin: 0; padding: 0.25rem 0.6rem; font-size: 0.8rem; }
 .clip-info { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); margin: -0.4rem 0 0.3rem; }
