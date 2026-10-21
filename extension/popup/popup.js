@@ -1,5 +1,6 @@
 // @ts-check
 import { ask, MSG } from "../shared/messages.js";
+import { loadSettings, saveSettings } from "../shared/settings.js";
 import { applyTheme } from "../shared/theme.js";
 import { BRAND_SVG } from "../shared/brand.js";
 
@@ -56,3 +57,69 @@ refresh()
     show("anki", { ok: false, error: e.message }, "");
     show("tracker", { ok: false, error: e.message }, "");
   });
+
+// --- watch session of the active tab ---
+
+const LANG_NAMES = { ja: "Japanese", zh: "Chinese", it: "Italian" };
+/** @type {number | null} */
+let activeTabId = null;
+let clockBase = 0; // elapsed ms at the last status, ticking locally while watching
+let clockAt = 0;
+let ticking = false;
+
+function clockText(/** @type {number} */ ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+async function refreshWatch() {
+  if (activeTabId === null) return;
+  const st = await ask(MSG.WATCH_STATUS, { tabId: activeTabId }).catch(() => null);
+  if (!st) return;
+  /** @type {HTMLInputElement} */ ($("watch-ignore")).checked = st.ignored;
+  const lang = /** @type {any} */ (LANG_NAMES)[st.lang] ?? st.lang ?? "";
+  const waiting = st.waiting ? ` · ${st.waiting} waiting for the tracker` : "";
+  const text = {
+    watching: `Watching · ${lang}${st.offline ? " · offline, sent later" : ""}`,
+    paused: `Paused · ${lang}`,
+    unmapped: `${lang}: no tracker project set (Options)`,
+    error: st.message ?? "Tracker error",
+    idle: st.ignored ? "Not tracked" : "No session (starts after 10 s of a ja/zh/it video)",
+  }[/** @type {string} */ (st.state)] ?? st.state;
+  $("watch-detail").textContent = text + waiting;
+  $("watch-led").className = `led ${st.state === "watching" ? "ok" : st.state === "error" || st.state === "unmapped" ? "bad" : ""}`;
+  clockBase = st.elapsedMs ?? 0;
+  clockAt = Date.now();
+  ticking = st.state === "watching";
+  $("watch-clock").textContent = st.elapsedMs !== undefined ? clockText(clockBase) : "";
+}
+
+setInterval(() => {
+  if (ticking) $("watch-clock").textContent = clockText(clockBase + Date.now() - clockAt);
+}, 1000);
+setInterval(() => refreshWatch(), 10000);
+
+$("watch-ignore").addEventListener("change", async (e) => {
+  if (activeTabId === null) return;
+  await ask(MSG.WATCH_IGNORE, { tabId: activeTabId, ignore: /** @type {HTMLInputElement} */ (e.target).checked }).catch(() => {});
+  refreshWatch();
+});
+
+chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+  activeTabId = tab?.id ?? null;
+  refreshWatch();
+});
+
+// --- subtitle bar position ---
+
+// Shown only while the bar has been moved; open YouTube tabs follow the settings change.
+loadSettings().then((settings) => {
+  const button = /** @type {HTMLButtonElement} */ ($("reset-position"));
+  button.hidden = !settings.overlay.position;
+  button.addEventListener("click", async () => {
+    const fresh = await loadSettings();
+    fresh.overlay.position = null;
+    await saveSettings(fresh);
+    button.hidden = true;
+  });
+});

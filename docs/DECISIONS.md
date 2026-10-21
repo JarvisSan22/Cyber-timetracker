@@ -135,3 +135,31 @@ After testing M2, the card panel inside the player covered the subtitles. Card e
 - **Italian**: forms come from `form_of` senses and from each lemma's `forms` table (stress marks removed via the table's links; written final accents like *parlò* kept); tables of multi-word lemmas ("dire addio") are skipped so *dico* maps only to *dire*/*dicere*. Compound entries (*dimmelo*) record their lemma from the gloss ("… of dire, with …").
 - **Pitch** is drawn on the card as inline SVG (kana above, dots high/low, hollow dot for the particle) per downstep value, from the reading's kana; it is cleared when you retype the word by hand.
 - **Tests**: dictionary fixtures are small excerpts of the built files (`extension/tests/fixtures/dict-*.jsonl`, attribution in the test file); `tests/test_fetch_dicts.py` runs the Chinese and Italian builders on tiny inputs and checks pinyin conversion.
+
+## Cyber Miner: short audio clips
+
+Reported: a subtitle line with about 10 s of speech gave a clip of only its first part. Without the video at hand, all likely causes are handled and the side bar now shows the timing so the next case can be read off.
+
+- **Auto-generated lines are not cut before their last word.** A line still on screen when the next starts ends where the next starts, but never before its last word's timing (from the json3 word offsets) + 0.6 s.
+- **The replay runs to the end time.** If the page pauses the video during recording (YouTube's player sometimes does after a seek), the recorder presses play again (up to 5 times) instead of stopping. It reports the span it actually played.
+- **Side bar timing**: "Line 12:41.2–12:51.0 · clip 12:40.9–12:51.5 (10.6 s)", plus "replay stopped at …" when the recording ended more than 0.3 s early.
+- **Clip controls** in the side bar: start/end −0.5 / +0.5 s (clicks within 0.6 s are sent as one change), "⏮ + line" and "+ line ⏭" to take in the previous/next subtitle line. Adding a line rewrites the sentence and translation from the subtitles (a hand edit of the sentence is replaced) and keeps the selected word on the same text. Every change records again.
+
+## Cyber Miner M3: watch time and card counts
+
+All in the extension; the tracker endpoints already existed (sessions) or came with M0 (cards, CORS). Anki is not involved.
+
+- **The page polls the player once a second** (`content/watcher.js`) instead of listening to media events: our own replays, YouTube's buffering and ads all fire play/pause events. A session starts after 10 s of real playback of a video with a ja/zh/it track; ads count as paused; a heartbeat goes out every minute while playing; the video ending, leaving it (navigation, page unload) or 10 min paused (Options) stops it. Ticks are capped at 5 s so a throttled background tab does not count as long playback.
+- **Making a card is study time**: while a card is being mined (draft open) or a line replayed, the session keeps its state even though the video is paused. Closing the draft with the video paused then pauses the session.
+- **The worker keeps one session per tab** (`background/watch.js`, records in `storage.local` so they survive a browser restart). It counts pauses itself and, at the end, stops the session and PATCHes `ended_at` and `paused_sec`, so a missed pause call does not matter. A paused session ends where the pause began; one whose tab or browser closed ends at its last heartbeat (on browser start and on extension reload, which orphans the old content scripts).
+- **Projects per language** are tracker project ids in the settings (0 = not logged), chosen in Options from the tracker's projects, with "Create" for a missing Japanese/Chinese/Italian project (language type, so it gets the starter tags). Tag names (default "Watching, YouTube" / "Watching, Netflix") are resolved to ids at session start and created when missing.
+- **Tracker unreachable**: the session is kept locally and sent as a past session (`POST /api/sessions` + `paused_sec`) when it ends, noted "Logged by Cyber Miner while the tracker was unreachable". Every tracker write goes through one queue in `storage.local`, sent in order and retried every 5 minutes (`alarms` permission) and after each event. A call the tracker refuses (404/409, e.g. a session deleted meanwhile) is dropped rather than blocking the queue; a session stopped in the tracker while paused is replaced by a new one on resume.
+- **Mined cards** are counted after Anki accepts them (`POST /api/cards` with project, the tab's session if one is running, site, video title, word and Anki note id). Quick mine and the side bar both pass the tab. If the session is gone the card is counted without it. Cards that waited for Anki are counted when they reach it, without a session.
+- **Popup**: this tab's state ("Watching · Japanese", "Paused", "no tracker project set", offline), a live clock, how many calls wait for the tracker, and "Don't track this tab" (ends the running session; kept until the browser closes).
+
+## Cyber Miner: movable subtitle bar
+
+- **Press and hold for 0.4 s** anywhere on the bar picks it up (a line fills along its bottom edge while holding); it then follows the pointer (pointer capture, so a fast pointer leaving the bar keeps it). Moving more than 6 px before that is a text drag, and a quick click a word pick, as before; releasing a moved bar never picks a word.
+- **Position** is `{x, y}` in % of the player: x = the bar's centre, y = its bottom edge from the player's bottom, so the bar grows upwards when a line wraps or the translation shows. It is clamped so the whole bar stays inside the player, again whenever the player is resized (theater mode, fullscreen). A moved bar stays put when YouTube's controls hide; the default spot still drops to the bottom.
+- **One position for every video**, saved on release in the synced settings (`overlay.position`, null = default). Every open YouTube tab follows the settings change.
+- **Reset**: ⟲ on the bar (shown on hover once moved) and "Reset subtitle position" in the popup (shown while moved), in case the bar ends up hard to grab.

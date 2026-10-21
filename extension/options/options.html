@@ -101,6 +101,21 @@
         <button type="button" id="tracker-test">Test connection</button>
       </div>
       <p class="result" id="tracker-result"></p>
+
+      <h3 class="sub-head">Projects</h3>
+      <p class="muted" style="margin-bottom: 0.4rem">Watch time and mined cards go to this project per language. "Not logged" skips that language.</p>
+      <div id="project-rows" class="project-rows"><p class="muted">Test the connection to load the tracker's projects.</p></div>
+      <p class="result" id="project-result"></p>
+
+      <h3 class="sub-head">Watch sessions</h3>
+      <div class="grid-2">
+        <label>YouTube tags <input type="text" data-field="tracker.watchTags.youtube" placeholder="Watching, YouTube"></label>
+        <label>Netflix tags <input type="text" data-field="tracker.watchTags.netflix" placeholder="Watching, Netflix"></label>
+      </div>
+      <small>Comma separated; created in the project if missing.</small>
+      <label>Stop a session after this many minutes paused
+        <input type="number" min="1" max="120" step="1" data-field="tracker.idleStopMin" style="max-width: 8rem">
+      </label>
     </section>
 
     <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">

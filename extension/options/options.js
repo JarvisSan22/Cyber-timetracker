@@ -1,6 +1,6 @@
 // @ts-check
 import { ask, MSG } from "../shared/messages.js";
-import { bindForm } from "../shared/bind.js";
+import { bindForm, fillForm } from "../shared/bind.js";
 import { loadSettings, saveSettings, originPattern, DEFAULTS } from "../shared/settings.js";
 import { applyTheme, loadPresets } from "../shared/theme.js";
 import { BRAND_SVG } from "../shared/brand.js";
@@ -193,3 +193,49 @@ async function renderDicts() {
     .join(" · ");
 }
 renderDicts();
+
+// --- Tracker projects per language ---
+
+const PROJECT_NAMES = { ja: "Japanese", zh: "Chinese", it: "Italian" };
+
+async function loadProjects() {
+  if (!settings.tracker.url) return;
+  /** @type {{id: number, name: string, archived: boolean}[]} */
+  let projects;
+  try {
+    projects = await ask(MSG.TRACKER_PROJECTS);
+  } catch {
+    return; // not reachable yet: the hint stays
+  }
+  const rows = $("project-rows");
+  rows.replaceChildren();
+  for (const [lang, name] of Object.entries(PROJECT_NAMES)) {
+    const row = Object.assign(document.createElement("div"), { className: "project-row" });
+    const label = Object.assign(document.createElement("span"), { className: "project-lang", textContent: name });
+    const select = document.createElement("select");
+    select.dataset.field = `tracker.projects.${lang}`;
+    select.add(new Option("— not logged —", "0"));
+    for (const p of projects.filter((p) => !p.archived)) select.add(new Option(p.name, String(p.id)));
+    row.append(label, select);
+    if (!projects.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+      const create = Object.assign(document.createElement("button"), { type: "button", className: "secondary", textContent: `Create "${name}"` });
+      create.addEventListener("click", async () => {
+        create.disabled = true;
+        try {
+          const project = await ask(MSG.TRACKER_CREATE_PROJECT, { name });
+          /** @type {any} */ (settings.tracker.projects)[lang] = project.id;
+          await saveSettings(settings);
+          result("project-result", "ok", `Created "${name}" with the language starter tags.`);
+          loadProjects();
+        } catch (e) {
+          result("project-result", "error", /** @type {Error} */ (e).message);
+          create.disabled = false;
+        }
+      });
+      row.append(create);
+    }
+    rows.append(row);
+  }
+  fillForm(rows, settings);
+}
+loadProjects();

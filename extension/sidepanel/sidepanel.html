@@ -27,6 +27,13 @@
         <span class="audio-state" id="audio-state"></span>
         <button type="button" class="secondary small-btn" id="rerecord">Re-record</button>
       </div>
+      <p class="clip-info" id="clip-info"></p>
+      <div class="clip-tools" id="clip-tools">
+        <button type="button" class="secondary small-btn" data-add="prev" title="Add the previous subtitle line">⏮ + line</button>
+        <span class="clip-group">start <button type="button" class="secondary small-btn" data-start="-500">−0.5</button><button type="button" class="secondary small-btn" data-start="500">+0.5</button></span>
+        <span class="clip-group">end <button type="button" class="secondary small-btn" data-end="-500">−0.5</button><button type="button" class="secondary small-btn" data-end="500">+0.5</button></span>
+        <button type="button" class="secondary small-btn" data-add="next" title="Add the next subtitle line">+ line ⏭</button>
+      </div>
 
       <div class="label-row"><span class="field-label">Sentence</span><span class="muted hint">click a word · drag to select</span><button type="button" class="link-btn" id="edit-sentence">✎ Edit</button></div>
       <div class="sentence" id="sentence" lang="ja"></div>

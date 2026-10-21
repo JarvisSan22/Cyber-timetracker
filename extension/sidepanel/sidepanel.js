@@ -5,6 +5,7 @@ import { ask, MSG, draftKey } from "../shared/messages.js";
 import { applyTheme } from "../shared/theme.js";
 import { BRAND_SVG } from "../shared/brand.js";
 import { fallbackWordAt } from "../shared/wordpick.js";
+import { formatTimeTenths } from "../shared/subtitles.js";
 import { forgetInstalled, hasDictionary, lookupAt } from "../shared/dictionary/index.js";
 
 const $ = (/** @type {string} */ id) => /** @type {any} */ (document.getElementById(id));
@@ -14,7 +15,9 @@ const $ = (/** @type {string} */ id) => /** @type {any} */ (document.getElementB
  * @property {number} draftId
  * @property {number} tabId
  * @property {import("../shared/card.js").CardDraft} draft
- * @property {{deck: string, audio: {state: string, seconds?: number, message?: string}, pick?: {start: number, end?: number}}} meta
+ * @property {{deck: string, audio: {state: string, seconds?: number, message?: string}, pick?: {start: number, end?: number},
+ *   lines?: {start_ms: number, end_ms: number, count: number}, clip?: {from: number, to: number, played?: [number, number]},
+ *   textRev?: number, prefixAdded?: number}} meta
  */
 
 const state = {
@@ -28,6 +31,8 @@ const state = {
   lookupToken: 0,
   /** @type {number[]} pitch of the dictionary entry in use (ja) */
   pitch: [],
+  /** Sentence version from the content script (grows when a line is added). */
+  textRev: 0,
 };
 
 $("brand-mark").innerHTML = BRAND_SVG;
@@ -69,7 +74,9 @@ function show(record) {
   $("lang").hidden = !record;
   if (!record) return;
   if (isNew) fillForm(record);
+  else if ((record.meta.textRev ?? 0) !== state.textRev) takeNewText(record);
   showMedia(record);
+  showClip(record);
 }
 
 /** @param {DraftRecord} record */
@@ -86,6 +93,7 @@ function fillForm(record) {
   $("notes").value = draft.notes ?? "";
   $("deck").textContent = `Deck: ${meta.deck} · ${draft.source ?? ""}`;
   state.pitch = [];
+  state.textRev = meta.textRev ?? 0;
   $("dup").hidden = true;
   $("error").hidden = true;
   $("lookup").hidden = true;
@@ -121,6 +129,64 @@ function showMedia({ draft, meta }) {
   $("rerecord").disabled = busy;
   $("send").disabled = busy;
 }
+
+/**
+ * A line was added on the page: new sentence and translation, selection kept on the same word.
+ * @param {DraftRecord} record
+ */
+function takeNewText(record) {
+  const shift = record.meta.prefixAdded ?? 0;
+  const keep = state.selection;
+  state.textRev = record.meta.textRev ?? 0;
+  setSentence(record.draft.sentence);
+  if (keep) {
+    state.selection = { start: keep.start + shift, end: keep.end + shift };
+    paintSelection();
+  }
+  $("translation").value = record.draft.translation ?? "";
+}
+
+/** "Line 12:41.2–12:51.0 · clip 12:40.9–12:51.5 (10.6 s)", with a warning when the replay stopped early. */
+function showClip(/** @type {DraftRecord} */ { meta }) {
+  const box = $("clip-info");
+  box.replaceChildren();
+  if (!meta.lines || !meta.clip) return;
+  const t = formatTimeTenths;
+  const lines = meta.lines.count > 1 ? `${meta.lines.count} lines` : "Line";
+  box.append(
+    `${lines} ${t(meta.lines.start_ms)}–${t(meta.lines.end_ms)} · clip ${t(meta.clip.from)}–${t(meta.clip.to)} (${((meta.clip.to - meta.clip.from) / 1000).toFixed(1)} s)`,
+  );
+  const played = meta.clip.played;
+  if (played && played[1] < meta.clip.to - 300) {
+    box.append(Object.assign(document.createElement("span"), { className: "warn", textContent: ` · replay stopped at ${t(played[1])}` }));
+  }
+}
+
+// Clip controls: +line goes at once; start/end nudges are gathered for a moment so several clicks
+// record once.
+/** @type {{start: number, end: number}} */
+let nudge = { start: 0, end: 0 };
+let nudgeTimer = 0;
+/** @param {object} adjust */
+function sendAdjust(adjust) {
+  const record = state.record;
+  if (record) chrome.tabs.sendMessage(record.tabId, { type: MSG.RERECORD, draftId: record.draftId, adjust }).catch(() => {});
+}
+$("clip-tools").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  const button = /** @type {HTMLElement} */ (e.target).closest("button");
+  if (!button) return;
+  if (button.dataset.add) {
+    sendAdjust(button.dataset.add === "prev" ? { addPrev: true } : { addNext: true });
+    return;
+  }
+  nudge.start += Number(button.dataset.start ?? 0);
+  nudge.end += Number(button.dataset.end ?? 0);
+  clearTimeout(nudgeTimer);
+  nudgeTimer = setTimeout(() => {
+    sendAdjust(nudge);
+    nudge = { start: 0, end: 0 };
+  }, 600);
+});
 
 // --- sentence and word picking ---
 
@@ -321,7 +387,7 @@ async function send(allowDuplicate) {
   $("send").disabled = true;
   $("error").hidden = true;
   try {
-    const r = await ask(MSG.MINE_CARD, { draft, allowDuplicate });
+    const r = await ask(MSG.MINE_CARD, { draft, allowDuplicate, tabId: record.tabId });
     if (r.duplicate) {
       $("dup").hidden = false;
       $("send").disabled = false;

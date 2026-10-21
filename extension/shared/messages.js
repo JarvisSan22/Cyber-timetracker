@@ -23,6 +23,12 @@ export const MSG = /** @type {const} */ ({
   RERECORD: "rerecord", // side panel -> content: {draftId}
   DRAFT_CLOSED: "draft-closed", // worker -> content: stop recording for this draft
   TOAST: "toast", // side panel -> content: {text, error?, noteId?}
+  // Watch time (M3)
+  WATCH: "watch", // content -> worker: {event: start|pause|resume|beat|stop, videoId, title, lang, site}
+  WATCH_STATUS: "watch-status", // popup -> worker: {tabId} -> status
+  WATCH_IGNORE: "watch-ignore", // popup -> worker: {tabId, ignore}
+  TRACKER_PROJECTS: "tracker-projects", // options -> worker: -> projects
+  TRACKER_CREATE_PROJECT: "tracker-create-project", // options -> worker: {name} -> project
 });
 
 /** storage.session key of a tab's draft. */

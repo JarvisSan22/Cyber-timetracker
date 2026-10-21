@@ -117,7 +117,7 @@ It lives in `extension/` in this repo and shares the tracker's theme presets, fo
 
 Nothing but the subtitle bar sits on the video; the card is made in the side bar next to it, so the picture and the subtitles stay visible.
 
-1. Subtitle bar at the bottom of the player: primary line, English line under it, blurred until hover. Mounted inside the player element, so it stays in fullscreen.
+1. Subtitle bar at the bottom of the player: primary line, English line under it, blurred until hover. Mounted inside the player element, so it stays in fullscreen. Press and hold it (0.4 s) to move it anywhere in the player, e.g. off burned-in subtitles; the spot is kept for every video (as % of the player, so it also fits fullscreen) until ⟲ on the bar or "Reset subtitle position" in the popup.
 2. Click a character in the line: pause and mine the line with the word starting there selected and looked up in the side bar. Drag across characters: mine with exactly that text selected.
 3. ⌬ button on the bar and Alt+M: pause and mine the line (no word selected yet). In fullscreen, mining first leaves fullscreen, because Chrome hides the side panel there.
 4. Toast: "CARD MINED · 14 today" with "Open in Anki".
@@ -424,7 +424,7 @@ Done when: Alt+M opens the side bar beside the video; clicking 食べられな�
 
 Done when: you mine a real card from a Japanese, a Chinese and an Italian YouTube video, with MP3 and picture, on both Linux and Windows.
 
-**M3 · Watch time and card counts**
+**M3 · Watch time and card counts** (built; see DECISIONS)
 
 1. Playback events (10 s threshold, pause, ads, end, navigation, tab close, 10 min idle).
 2. `tracker.js`: options URL + optional permission, test button, language → project mapping, "Create missing projects", watch tags.
@@ -436,10 +436,12 @@ Done when: an hour of Japanese YouTube shows as one session under Japanese with 
 
 **M4 · Netflix**
 
-1. `page-hook.js`: manifest `timedtexttracks` intercept, TTML and WebVTT downloads; TTML parser + fixtures.
-2. `netflix.js` adapter: player API seek, title "Show S1E3", track selection, next-episode detection.
-3. Image-subtitle detection → message + manual subtitle file loader (SRT, VTT, ASS parsers).
-4. Hand checklist on Linux and Windows (black frames on Windows expected and handled).
+Decided 2026-10-21: tab audio is started once per Netflix tab (Alt+M or the toolbar icon), then ⌬ in the bar works too; Japanese ruby is dropped from the Sentence (our furigana stays on the target word); Linux and Windows both supported (black frames on Windows leave Picture empty); loading a subtitle file by hand moves to M6.
+
+1. M4a, adapter refactor with no change on YouTube: `content/sites/index.js` picks the adapter by hostname; YouTube subtitle loading (`handleTimedtext`, json3 refetch, translation) moves from `app.js` into `youtube.js` behind `loadSubtitles(target, tlang)`; `controlsHidden(player)`, `audio: "element" | "tab"`, `frame: "canvas" | "tab"` on the adapter; `page-hook.js` keeps the shared plumbing and fetch/XHR copy, player commands move to `content/hooks/youtube.js` / `netflix.js`; no `site: "youtube"` hardcode in the worker. Test YouTube, commit.
+2. M4b, subtitles: hook copies the player manifest (`timedtexttracks`) and `/metadata`; `netflix.js` downloads target + English tracks (`imsc1.1`, `dfxp-ls-sdh` or `webvtt-lssdh-ios8`); `parseTtml` (tick timebase, `<br>`, ruby removed) and `parseVtt` with node fixtures; native `.player-timedtext` hidden.
+3. M4c, mining: seek through Netflix's player API (setting `currentTime` gives M7375); `tabCapture` stream kept in the offscreen document and routed back to the speakers, recorder "tab" mode; `captureVisibleTab` + crop, black-frame check; title "Show S1E3"; manifest adds netflix.com and `tabCapture`.
+4. M4d: next episode (new `/watch/<id>`) starts a new session; image subtitles (`nflx-cmisc` only) show a message; hand checklist on Linux and Windows.
 
 Done when: card + watch session from a Netflix episode, and autoplay to the next episode starts a new session.
 
@@ -455,6 +457,7 @@ Done when: the transcript follows the video and mining from it fills the card.
 2. Shift-click lines in the side bar transcript to merge several cues into one card.
 3. Export/import extension settings; "Report a broken site" note in the Ideas list via `POST /api/ideas`.
 4. README section for install, AnkiConnect setup, dictionary downloads.
+5. Load a subtitle file by hand (SRT, VTT, ASS) from the side bar, for Netflix titles with image subtitles and for YouTube.
 
 ## Hand test checklist (each release)
 

@@ -29,10 +29,21 @@ export const DEFAULTS = {
     url: "",
     logWatchTime: true,
     countCards: true,
+    // Tracker project id per mined language (0 = not set: nothing is logged for that language).
+    projects: { ja: 0, zh: 0, it: 0 },
+    // Tags put on watch sessions, comma separated, created in the project if missing.
+    watchTags: { youtube: "Watching, YouTube", netflix: "Watching, Netflix" },
+    // A watch session stops after this long paused.
+    idleStopMin: 10,
   },
   theme: {
     // "tracker" follows Cyber Tracker's live theme; otherwise a preset name from shared/themes.json.
     mode: "tracker",
+  },
+  overlay: {
+    // Where the subtitle bar was moved to: {x, y} in % of the player (shared/position.js); null = default spot.
+    /** @type {{x: number, y: number} | null} */
+    position: null,
   },
 };
 

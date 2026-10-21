@@ -4,6 +4,11 @@
  * Built with h() instead of innerHTML: YouTube enforces Trusted Types. */
 
 import { lineOffsets } from "../shared/wordpick.js";
+import { clampPosition, positionFromPointer } from "../shared/position.js";
+
+/** Hold this long without moving to pick the bar up; moving further first is a text drag. */
+const HOLD_MS = 400;
+const HOLD_SLOP_PX = 6;
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -49,6 +54,8 @@ const SHIELDED_EVENTS = ["click", "dblclick", "mousedown", "mouseup", "pointerdo
  * @property {() => void} onMine ⌬ button
  * @property {(pick: {start: number, end?: number}) => void} onPickWord click (start) or drag (start, end) on the line
  * @property {(noteId: number) => void} onOpenNote
+ * @property {(pos: {x: number, y: number}) => void} onMoved the bar was dragged to a new spot
+ * @property {() => void} onResetPosition ⟲ on the bar
  */
 
 /**
@@ -65,7 +72,15 @@ export function createOverlay(handlers, sheets) {
   const primary = h("div", { class: "primary" });
   const translation = h("div", { class: "translation blur" });
   const mineBtn = h("button", { class: "mine-btn", title: "Mine this line (Alt+M)", onclick: () => handlers.onMine() }, brandSvg());
-  const bar = h("div", { class: "bar empty", "data-augmented-ui": "tl-clip br-clip border" }, h("div", { class: "lines" }, primary, translation), mineBtn);
+  const resetBtn = h("button", { class: "reset-btn", title: "Back to the default position", onclick: () => handlers.onResetPosition() }, "⟲");
+  const bar = h(
+    "div",
+    { class: "bar empty", "data-augmented-ui": "tl-clip br-clip border" },
+    h("div", { class: "lines" }, primary, translation),
+    mineBtn,
+    resetBtn,
+    h("span", { class: "hold-meter" }),
+  );
 
   // --- status chip ---
   const ankiLed = h("span", { class: "led", title: "Anki" });
@@ -90,7 +105,7 @@ export function createOverlay(handlers, sheets) {
   primary.addEventListener("pointerup", (/** @type {PointerEvent} */ e) => {
     const from = downAt;
     downAt = null;
-    if (from === null) return;
+    if (from === null || justMoved) return; // releasing a moved bar is not a word pick
     const to = offsetOf(root.elementFromPoint(e.clientX, e.clientY)) ?? from;
     if (to === from) handlers.onPickWord({ start: from });
     else {
@@ -100,8 +115,89 @@ export function createOverlay(handlers, sheets) {
     }
   });
 
+  // Press and hold the bar to move it. A quick click or a quick drag still picks words (handlers above).
+  /** @type {null | {timer: number, x0: number, y0: number, id: number, moving: boolean, grab: {x: number, y: number}}} */
+  let hold = null;
+  let justMoved = false;
+  /** @type {{x: number, y: number} | null} */
+  let position = null;
+
+  const playerBox = () => host.getBoundingClientRect(); // the host fills the player
+
+  /** @param {{x: number, y: number} | null} pos */
+  function applyPosition(pos) {
+    position = pos;
+    bar.classList.toggle("custom", Boolean(pos));
+    if (pos) {
+      bar.style.setProperty("--x", String(pos.x));
+      bar.style.setProperty("--y", String(pos.y));
+    }
+  }
+
+  function cancelHold() {
+    if (!hold) return;
+    clearTimeout(hold.timer);
+    if (hold.moving && bar.hasPointerCapture(hold.id)) bar.releasePointerCapture(hold.id);
+    bar.classList.remove("holding", "moving");
+    hold = null;
+  }
+
+  bar.addEventListener("pointerdown", (/** @type {PointerEvent} */ e) => {
+    if (e.button !== 0 || /** @type {HTMLElement} */ (e.target).closest(".mine-btn, .reset-btn")) return;
+    justMoved = false;
+    const box = bar.getBoundingClientRect();
+    const id = e.pointerId;
+    hold = { x0: e.clientX, y0: e.clientY, id, moving: false, grab: { x: e.clientX - box.left, y: e.clientY - box.top }, timer: 0 };
+    bar.classList.add("holding");
+    hold.timer = setTimeout(() => {
+      if (!hold || hold.id !== id) return;
+      hold.moving = true;
+      downAt = null; // the press became a move, not a word pick
+      bar.classList.remove("holding");
+      bar.classList.add("moving");
+      bar.setPointerCapture(id); // keep following a fast pointer that leaves the bar
+    }, HOLD_MS);
+  });
+
+  bar.addEventListener("pointermove", (/** @type {PointerEvent} */ e) => {
+    if (!hold || e.pointerId !== hold.id) return;
+    if (!hold.moving) {
+      if (Math.hypot(e.clientX - hold.x0, e.clientY - hold.y0) > HOLD_SLOP_PX) cancelHold(); // a text drag
+      return;
+    }
+    const box = bar.getBoundingClientRect();
+    applyPosition(positionFromPointer(e.clientX, e.clientY, hold.grab, playerBox(), box));
+  });
+
+  // Capture phase, so the flag is set before the text's own pointerup handler runs.
+  bar.addEventListener(
+    "pointerup",
+    (/** @type {PointerEvent} */ e) => {
+      if (!hold || e.pointerId !== hold.id) return;
+      justMoved = hold.moving;
+      if (justMoved && position) handlers.onMoved(position);
+      cancelHold();
+    },
+    true,
+  );
+  bar.addEventListener("pointercancel", () => cancelHold());
+
+  // The player changes size (theater mode, fullscreen, window): keep a moved bar inside it.
+  new ResizeObserver(() => {
+    if (position && !hold?.moving) applyPosition(clampPosition(position, playerBox(), bar.getBoundingClientRect()));
+  }).observe(host);
+
   return {
     host,
+
+    /**
+     * Saved spot of the bar (% of the player), or null for the default spot above YouTube's controls.
+     * @param {{x: number, y: number} | null} pos
+     */
+    setPosition(pos) {
+      if (hold?.moving) return; // the user is dragging it right now
+      applyPosition(pos ? clampPosition(pos, playerBox(), bar.getBoundingClientRect()) : null);
+    },
 
     /** @param {HTMLElement} player */
     mount(player) {

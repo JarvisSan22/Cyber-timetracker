@@ -28,6 +28,26 @@
   --aug-border-bg: linear-gradient(135deg, var(--accent), var(--line) 40%, var(--line) 70%, var(--accent-2));
 }
 :host(.controls-hidden) .bar { bottom: 10px; }
+/* Moved by the user (press and hold): --x = centre, --y = bottom edge, both % of the player. It stays
+   there when YouTube's controls hide. */
+.bar.custom, :host(.controls-hidden) .bar.custom { left: calc(var(--x) * 1%); bottom: calc(var(--y) * 1%); }
+/* Holding: a line fills along the bottom edge during the 0.4 s it takes to pick the bar up. */
+.hold-meter { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--accent-2); pointer-events: none; }
+.bar.holding .hold-meter { animation: cm-hold 0.4s linear forwards; }
+@keyframes cm-hold { to { width: 100%; } }
+.bar.moving {
+  cursor: grabbing; user-select: none;
+  --aug-border-all: 2px; --aug-border-bg: var(--accent-2);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent-2) 60%, transparent));
+}
+.bar.moving .primary { cursor: grabbing; }
+.reset-btn {
+  display: none; flex: none; width: 1.6em; height: 1.6em; place-items: center; cursor: pointer; padding: 0;
+  background: var(--card-2); color: var(--muted); border: 1px solid var(--line); font: inherit; font-size: 0.9em; line-height: 1;
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+}
+.reset-btn:hover { color: var(--accent-2); border-color: var(--accent-2); }
+.bar.custom:hover .reset-btn { display: grid; }
 .bar.empty { visibility: hidden; }
 .lines { flex: 1; min-width: 0; }
 .primary {

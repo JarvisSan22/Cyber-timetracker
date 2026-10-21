@@ -57,12 +57,14 @@ function once(video, type) {
 }
 
 /**
- * Replay [startMs, endMs] in real time and record the element's audio. Leaves the video paused at endMs.
+ * Replay [startMs, endMs] in real time and record the element's audio. Leaves the video paused.
+ * Runs to the end time even if the page pauses the video on the way (YouTube's player sometimes does
+ * after a seek): it presses play again, a few times at most.
  * @param {HTMLVideoElement} video
  * @param {number} startMs
  * @param {number} endMs
  * @param {{isCancelled?: () => boolean}} [options]
- * @returns {Promise<{data: string, mime: string}>} base64 WebM/Opus
+ * @returns {Promise<{data: string, mime: string, fromMs: number, toMs: number}>} base64 WebM/Opus and the span actually played
  */
 export async function recordRange(video, startMs, endMs, { isCancelled = () => false } = {}) {
   const stream = /** @type {MediaStream} */ (/** @type {any} */ (video).captureStream());
@@ -83,11 +85,17 @@ export async function recordRange(video, startMs, endMs, { isCancelled = () => f
   video.pause();
   video.currentTime = Math.max(0, startMs) / 1000;
   await once(video, "seeked");
+  const fromMs = video.currentTime * 1000;
   recorder.start();
+  let restarts = 0;
   try {
-    await video.play();
-    const limit = performance.now() + (endMs - startMs) + 4000;
-    while (video.currentTime * 1000 < endMs && !video.ended && !video.paused && performance.now() < limit && !isCancelled()) {
+    await video.play().catch(() => {});
+    const deadline = performance.now() + (endMs - startMs) + 8000;
+    while (video.currentTime * 1000 < endMs && !video.ended && performance.now() < deadline && !isCancelled()) {
+      if (video.paused && restarts < 5) {
+        restarts++;
+        await video.play().catch(() => {});
+      }
       await new Promise((r) => setTimeout(r, 20));
     }
   } finally {
@@ -95,10 +103,11 @@ export async function recordRange(video, startMs, endMs, { isCancelled = () => f
     recorder.stop();
     video.playbackRate = rate;
   }
+  const toMs = video.currentTime * 1000;
   await stopped;
   stream.getTracks().forEach((t) => t.stop());
   if (isCancelled()) throw new Error("Recording cancelled");
-  return { data: await blobToBase64(new Blob(chunks, { type: mime })), mime };
+  return { data: await blobToBase64(new Blob(chunks, { type: mime })), mime, fromMs, toMs };
 }
 
 /**

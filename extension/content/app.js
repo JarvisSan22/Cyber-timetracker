@@ -5,11 +5,12 @@ import { youtube } from "./sites/youtube.js";
 import { onTimedtext } from "./bridge.js";
 import { createOverlay } from "./overlay.js";
 import { captureFrame, recordRange, playRange } from "./recorder.js";
+import { createWatcher } from "./watcher.js";
 import { ask, MSG } from "../shared/messages.js";
-import { loadSettings } from "../shared/settings.js";
+import { loadSettings, saveSettings } from "../shared/settings.js";
 import {
-  baseLang, cueIndexAt, cueShowing, describeTimedtextUrl, formatTime, overlappingText, parseJson3, pickTargetTrack,
-  sentenceText, translationUrl,
+  baseLang, cueIndexAt, cueShowing, describeTimedtextUrl, formatTime, joinCues, overlappingText, parseJson3,
+  pickTargetTrack, sentenceText, translationUrl,
 } from "../shared/subtitles.js";
 
 const adapter = youtube;
@@ -33,14 +34,25 @@ const state = {
   translationMode: "blur",
   active: false,
   setupToken: 0,
-  /** The line being mined: its draft lives in the worker (side panel reads it); we own recording. */
-  /** @type {null | {draftId: number, draft: any, cue: Cue, quick: boolean}} */
+  /** The line(s) being mined: the draft lives in the worker (side panel reads it); we own recording.
+   * first/last index the mined cues in `primary`; startMs/endMs is the clip, adjustable from the side bar. */
+  /** @type {null | {draftId: number, draft: any, first: number, last: number, startMs: number, endMs: number, quick: boolean, textRev: number}} */
   mining: null,
   recordToken: 0,
+  /** Replaying a line (Alt+R): our own play/pause, not watching. */
+  replaying: false,
 };
 
 /** @type {ReturnType<typeof createOverlay>} */
 let overlay;
+const watcher = createWatcher({
+  send: (event, info) => ask(MSG.WATCH, { event, ...info }).catch(() => {}),
+  getVideo: () => adapter.getVideo(),
+  isAd: () => adapter.isAd(),
+  // Making a card is study time too: the session keeps running while the video is paused for it.
+  isBusy: () => state.mining !== null || state.replaying,
+  idleStopMs: () => (state.settings?.tracker.idleStopMin ?? 10) * 60_000,
+});
 const pageStyle = new CSSStyleSheet();
 
 export async function start() {
@@ -56,9 +68,12 @@ export async function start() {
         mine({ quick: false, pick });
       },
       onOpenNote: (noteId) => ask(MSG.OPEN_NOTE, { noteId }).catch(() => {}),
+      onMoved: (pos) => savePosition(pos),
+      onResetPosition: () => savePosition(null),
     },
     await loadSheets(),
   );
+  overlay.setPosition(state.settings.overlay.position);
   document.adoptedStyleSheets = [...document.adoptedStyleSheets, pageStyle, await fontSheet()];
   applyTheme();
 
@@ -66,19 +81,39 @@ export async function start() {
   document.addEventListener("yt-navigate-finish", () => setupVideo());
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg?.type === MSG.COMMAND) runCommand(msg.command);
-    if (msg?.type === MSG.RERECORD && state.mining?.draftId === msg.draftId) recordAudio();
+    if (msg?.type === MSG.RERECORD && state.mining?.draftId === msg.draftId) adjustAndRecord(msg.adjust ?? {});
     if (msg?.type === MSG.DRAFT_CLOSED && state.mining?.draftId === msg.draftId) stopMining();
     if (msg?.type === MSG.TOAST) overlay.showToast(msg.text, { error: msg.error, noteId: msg.noteId });
     if (msg?.type === MSG.SETTINGS_CHANGED) loadSettings().then((s) => (state.settings = s));
     return false;
   });
   chrome.storage.onChanged.addListener((changes) => {
-    if (changes.settings) loadSettings().then((s) => (state.settings = s));
+    // Also how a move in another tab, or "Reset subtitle position" in the popup, reaches this tab.
+    if (changes.settings)
+      loadSettings().then((s) => {
+        state.settings = s;
+        overlay.setPosition(s.overlay.position);
+      });
     if (changes.trackerTheme) applyTheme();
   });
   document.addEventListener("keydown", onKey, true);
   setInterval(tick, 100);
+  setInterval(() => watcher.tick(), 1000);
+  // Leaving YouTube in this tab (or reloading) ends the session now, not at the next browser start.
+  window.addEventListener("pagehide", () => watcher.detach());
   setupVideo();
+}
+
+/**
+ * Remember where the subtitle bar was moved to (null = back to the default spot). One position for
+ * every video, synced between machines with the other settings.
+ * @param {{x: number, y: number} | null} pos
+ */
+async function savePosition(pos) {
+  const settings = await loadSettings();
+  settings.overlay.position = pos;
+  await saveSettings(settings);
+  if (!pos) overlay.setPosition(null);
 }
 
 async function loadSheets() {
@@ -113,6 +148,7 @@ function applyTheme() {
 
 async function setupVideo() {
   const token = ++state.setupToken;
+  watcher.detach();
   deactivate();
   state.video = null;
   state.target = null;
@@ -140,6 +176,7 @@ async function setupVideo() {
   state.lang = baseLang(target.languageCode);
   overlay.setStatus({ text: `${state.lang}${target.kind === "asr" ? " auto" : ""} · loading`, flash: true });
   activate();
+  watcher.attach({ videoId: video.videoId, title: video.title, lang: state.lang, site: adapter.site });
 
   // The player may have fetched the track before we loaded.
   for (const { url, body } of await adapter.capturedSoFar().catch(() => [])) handleTimedtext(url, body);
@@ -292,7 +329,8 @@ function replayLine() {
   const video = adapter.getVideo();
   const i = currentIndex();
   if (!video || i < 0) return;
-  playRange(video, state.primary[i].start_ms, state.primary[i].end_ms);
+  state.replaying = true;
+  playRange(video, state.primary[i].start_ms, state.primary[i].end_ms).finally(() => (state.replaying = false));
 }
 
 // --- mining ---
@@ -351,12 +389,21 @@ async function mine({ quick, pick }) {
   const picture = await captureFrame(video, settings.cards.screenshotWidth, settings.cards.jpegQuality);
   if (picture) draft.picture = picture;
 
+  const startMs = Math.max(0, cue.start_ms - settings.cards.padBeforeMs);
+  const endMs = cue.end_ms + settings.cards.padAfterMs;
   let draftId = 0;
   if (!quick) {
-    const meta = { deck: settings.anki.decks[lang], audio: { state: "recording" }, pick: pick ?? null };
+    const meta = {
+      deck: settings.anki.decks[lang],
+      audio: { state: "recording" },
+      pick: pick ?? null,
+      lines: { start_ms: cue.start_ms, end_ms: cue.end_ms, count: 1 },
+      clip: { from: startMs, to: endMs },
+      textRev: 0,
+    };
     draftId = (await ask(MSG.DRAFT_START, { draft, meta })).draftId;
   }
-  const mining = { draftId, draft, cue, quick };
+  const mining = { draftId, draft, first: i, last: i, startMs, endMs, quick, textRev: 0 };
   state.mining = mining;
   const ok = await recordAudio();
   if (quick && state.mining === mining) {
@@ -375,17 +422,19 @@ async function recordAudio() {
   const returnTo = video.currentTime;
   const isCancelled = () => state.recordToken !== token || state.mining !== mining;
   /** @param {object} meta @param {object} [draft] */
-  const update = (meta, draft) =>
-    mining.quick ? Promise.resolve() : ask(MSG.DRAFT_UPDATE, { draftId: mining.draftId, meta: { audio: meta }, draft }).catch(() => {});
-  update({ state: "recording" });
+  const update = (meta, draft, extra = {}) =>
+    mining.quick ? Promise.resolve() : ask(MSG.DRAFT_UPDATE, { draftId: mining.draftId, meta: { audio: meta, ...extra }, draft }).catch(() => {});
+  const wanted = { from: mining.startMs, to: mining.endMs };
+  update({ state: "recording" }, undefined, { clip: wanted });
   try {
-    const clip = await recordRange(video, mining.cue.start_ms - settings.cards.padBeforeMs, mining.cue.end_ms + settings.cards.padAfterMs, { isCancelled });
+    const clip = await recordRange(video, mining.startMs, mining.endMs, { isCancelled });
     video.currentTime = returnTo;
     update({ state: "encoding" });
     const mp3 = await ask(MSG.ENCODE_MP3, { data: clip.data, kbps: settings.cards.mp3Kbps });
     if (isCancelled()) return false;
     mining.draft.audio = { data: mp3.data, ext: "mp3" };
-    await update({ state: "ready", seconds: mp3.seconds }, { audio: mining.draft.audio });
+    // `played` is what the video really played; shorter than `wanted` means the replay was cut.
+    await update({ state: "ready", seconds: mp3.seconds }, { audio: mining.draft.audio }, { clip: { ...wanted, played: [clip.fromMs, clip.toMs] } });
     return true;
   } catch (e) {
     if (isCancelled()) return false;
@@ -393,6 +442,53 @@ async function recordAudio() {
     update({ state: "error", message: /** @type {Error} */ (e).message });
     return false;
   }
+}
+
+/**
+ * Side bar asked for a different clip: shift start/end, or take in the previous/next subtitle line
+ * (sentence and translation grow with it). Then record again.
+ * @param {{start?: number, end?: number, addPrev?: boolean, addNext?: boolean}} adjust ms deltas / flags
+ */
+async function adjustAndRecord(adjust) {
+  const mining = state.mining;
+  const settings = state.settings;
+  if (!mining || !settings) return;
+  let prefixAdded = 0;
+  let linesChanged = false;
+  if (adjust.addPrev && mining.first > 0) {
+    mining.first--;
+    // The side bar shifts the selected word by what was put in front of the sentence.
+    const sep = state.lang === "ja" || state.lang === "zh" ? "" : " ";
+    prefixAdded = sentenceText(state.primary[mining.first].text, state.lang).length + sep.length;
+    mining.startMs = Math.min(mining.startMs, Math.max(0, state.primary[mining.first].start_ms - settings.cards.padBeforeMs));
+    linesChanged = true;
+  }
+  if (adjust.addNext && mining.last < state.primary.length - 1) {
+    mining.last++;
+    mining.endMs = Math.max(mining.endMs, state.primary[mining.last].end_ms + settings.cards.padAfterMs);
+    linesChanged = true;
+  }
+  if (adjust.start) mining.startMs = Math.max(0, Math.min(mining.endMs - 500, mining.startMs + adjust.start));
+  if (adjust.end) mining.endMs = Math.max(mining.startMs + 500, mining.endMs + adjust.end);
+
+  const cues = state.primary.slice(mining.first, mining.last + 1);
+  const joined = joinCues(cues, state.lang);
+  if (linesChanged) {
+    mining.draft.sentence = joined.sentence;
+    mining.draft.translation = overlappingText(state.translation, { start_ms: joined.start_ms, end_ms: joined.end_ms });
+    mining.textRev++;
+  }
+  await ask(MSG.DRAFT_UPDATE, {
+    draftId: mining.draftId,
+    draft: linesChanged ? { sentence: mining.draft.sentence, translation: mining.draft.translation } : undefined,
+    meta: {
+      lines: { start_ms: joined.start_ms, end_ms: joined.end_ms, count: cues.length },
+      clip: { from: mining.startMs, to: mining.endMs },
+      textRev: mining.textRev,
+      prefixAdded,
+    },
+  }).catch(() => {});
+  recordAudio();
 }
 
 /** @param {{draft: any, quick: boolean}} mining */

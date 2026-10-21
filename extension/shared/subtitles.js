@@ -8,7 +8,11 @@
  * @property {string} text  lines joined with "\n"
  * @property {string} lang  base language ("ja", "zh", "it", "en")
  * @property {"primary" | "translation"} role
+ * @property {number} [last_word_ms] start of the last word (auto-generated tracks carry word timings)
  */
+
+/** Room for the last word after its start time, when a line has to be cut short. */
+const LAST_WORD_MS = 600;
 
 /**
  * @typedef {object} Track
@@ -46,12 +50,21 @@ export function parseJson3(body, lang, role) {
       .join("\n");
     if (!text) continue;
     const start = ev.tStartMs ?? 0;
-    cues.push({ start_ms: start, end_ms: start + (ev.dDurationMs ?? 0), text, lang: baseLang(lang), role });
+    /** @type {Cue} */
+    const cue = { start_ms: start, end_ms: start + (ev.dDurationMs ?? 0), text, lang: baseLang(lang), role };
+    const offsets = ev.segs.map((/** @type {{tOffsetMs?: number}} */ s) => s.tOffsetMs ?? 0);
+    if (offsets.some((/** @type {number} */ o) => o > 0)) cue.last_word_ms = start + Math.max(...offsets);
+    cues.push(cue);
   }
   cues.sort((a, b) => a.start_ms - b.start_ms || a.end_ms - b.end_ms);
-  // ASR events often run until the next line scrolls in; clip so one cue ends where the next starts.
+  // ASR lines stay on screen while the next one builds up: end each where the next starts, but never
+  // before its own last word has had time to be spoken.
   for (let i = 0; i < cues.length - 1; i++) {
-    if (cues[i].end_ms > cues[i + 1].start_ms && cues[i + 1].start_ms > cues[i].start_ms) cues[i].end_ms = cues[i + 1].start_ms;
+    const cue = cues[i];
+    const next = cues[i + 1];
+    if (cue.end_ms > next.start_ms && next.start_ms > cue.start_ms) {
+      cue.end_ms = Math.min(cue.end_ms, Math.max(next.start_ms, (cue.last_word_ms ?? 0) + LAST_WORD_MS));
+    }
   }
   return cues;
 }
@@ -167,6 +180,26 @@ export function describeTimedtextUrl(url) {
     translated: Boolean(u.searchParams.get("tlang")),
     kind: u.searchParams.get("kind") ?? "",
     fmt: u.searchParams.get("fmt") ?? "",
+  };
+}
+
+/** 761234 -> "12:41.2" (for timing readouts). */
+export function formatTimeTenths(/** @type {number} */ ms) {
+  const tenths = Math.floor(Math.max(0, ms) / 100) % 10;
+  return `${formatTime(ms)}.${tenths}`;
+}
+
+/**
+ * Several consecutive cues as one: sentence text joined per language, span from first start to last end.
+ * @param {Cue[]} cues sorted
+ * @param {string} lang
+ */
+export function joinCues(cues, lang) {
+  const sep = lang === "ja" || lang === "zh" ? "" : " ";
+  return {
+    start_ms: cues[0].start_ms,
+    end_ms: cues[cues.length - 1].end_ms,
+    sentence: cues.map((c) => sentenceText(c.text, lang)).join(sep),
   };
 }
 

@@ -5,6 +5,8 @@
     const { start } = await import(chrome.runtime.getURL("content/app.js"));
     await start();
   } catch (e) {
-    console.error("[Cyber Miner] failed to start", e);
+    // After the extension is reloaded, scripts left in already-open tabs can no longer load its files.
+    if (!chrome.runtime?.id) console.warn("[Cyber Miner] the extension was reloaded: refresh this tab");
+    else console.error("[Cyber Miner] failed to start", e);
   }
 })();

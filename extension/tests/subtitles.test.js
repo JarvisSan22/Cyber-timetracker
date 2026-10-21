@@ -28,6 +28,27 @@ test("json3 auto-generated track: append events dropped, overlapping lines clipp
     [320, 2910, "えっと今日はですね"],
     [2910, 9010, "天気がいい"],
   ]);
+  assert.equal(cues[0].last_word_ms, 1220);
+});
+
+test("a line cut by the next one keeps time for its last word", () => {
+  const body = { events: [
+    { tStartMs: 0, dDurationMs: 9000, segs: [{ utf8: "a" }, { utf8: "b", tOffsetMs: 5000 }] },
+    { tStartMs: 3000, dDurationMs: 4000, segs: [{ utf8: "c" }] },
+    { tStartMs: 9000, dDurationMs: 1000, segs: [{ utf8: "d", tOffsetMs: 100 }] },
+  ] };
+  const cues = parseJson3(body, "it", "primary");
+  assert.equal(cues[0].end_ms, 5600); // last word at 5000 + 600, not the next line's 3000
+  assert.equal(cues[1].end_ms, 7000);
+});
+
+test("joining cues and tenths", async () => {
+  const { joinCues, formatTimeTenths } = await import("../shared/subtitles.js");
+  const a = { start_ms: 1000, end_ms: 2000, text: "今日は", lang: "ja", role: "primary" };
+  const b = { start_ms: 2100, end_ms: 4000, text: "魔法の\n練習", lang: "ja", role: "primary" };
+  assert.deepEqual(joinCues([a, b], "ja"), { start_ms: 1000, end_ms: 4000, sentence: "今日は魔法の練習" });
+  assert.equal(joinCues([{ ...a, text: "ciao" }, { ...b, text: "a\ntutti" }], "it").sentence, "ciao a tutti");
+  assert.equal(formatTimeTenths(761234), "12:41.2");
 });
 
 test("cue lookup: showing line, previous line between lines, nothing before the first", () => {

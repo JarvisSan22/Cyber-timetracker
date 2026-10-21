@@ -20,6 +20,12 @@ test("mergeDefaults replaces arrays and copies them", () => {
   assert.deepEqual(DEFAULTS.languages.targets, ["ja", "zh", "it"]);
 });
 
+test("a moved subtitle bar position survives the merge; null means the default spot", () => {
+  assert.deepEqual(mergeDefaults(DEFAULTS, { overlay: { position: { x: 30, y: 60 } } }).overlay.position, { x: 30, y: 60 });
+  assert.equal(mergeDefaults(DEFAULTS, { overlay: { position: null } }).overlay.position, null);
+  assert.equal(mergeDefaults(DEFAULTS, {}).overlay.position, null);
+});
+
 test("dotted paths", () => {
   const obj = { a: { b: 1 } };
   assert.equal(getPath(obj, "a.b"), 1);

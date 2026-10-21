@@ -39,3 +39,13 @@ body.popup { width: 340px; min-height: 0; }
 .dict-row progress { margin: 0; }
 .dict-actions { display: flex; gap: 0.4rem; }
 .dict-actions button { width: auto; margin: 0; padding: 0.3rem 0.8rem; font-size: 0.85rem; }
+.sub-head { font-size: 0.95rem; margin: 1.2rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); }
+.project-rows { display: grid; gap: 0.4rem; }
+.project-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.project-row select, .project-row button { margin: 0; width: auto; }
+.project-row select { flex: 1; min-width: 10rem; }
+.project-lang { width: 6rem; font-weight: 700; }
+.watch-clock { grid-column: 2; font-family: var(--font-mono); font-size: 1.4rem; color: var(--accent-2); line-height: 1.1; }
+.watch-clock:empty { display: none; }
+.watch-ignore { grid-column: 2; display: flex; gap: 0.4rem; align-items: center; font-size: 0.8rem; color: var(--muted); margin: 0.2rem 0 0; font-weight: 500; }
+.watch-ignore input { margin: 0; }

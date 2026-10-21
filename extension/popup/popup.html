@@ -24,6 +24,13 @@
         <span class="status-detail" id="tracker-detail">Checking…</span>
       </article>
     </section>
+    <article class="status-row aug-panel watch-row" data-augmented-ui="tl-clip br-clip border" style="margin-bottom: 0.5rem">
+      <span class="led" id="watch-led"></span>
+      <span class="status-name">This tab</span>
+      <span class="status-detail" id="watch-detail">–</span>
+      <span class="watch-clock" id="watch-clock"></span>
+      <label class="watch-ignore"><input type="checkbox" id="watch-ignore"> Don't track this tab</label>
+    </article>
     <article class="status-row aug-panel" data-augmented-ui="tl-clip br-clip border" style="margin-bottom: 0.5rem">
       <span class="led ok"></span>
       <span class="status-name">Cards today</span>
@@ -39,6 +46,7 @@
       <button id="open-sidebar" type="button" style="flex: 1">Card side bar</button>
       <button id="open-options" type="button" class="secondary" style="flex: 1">Options</button>
     </div>
+    <button id="reset-position" type="button" class="secondary wide" style="margin-top: 0.5rem" hidden>Reset subtitle position</button>
   </main>
 </body>
 </html>

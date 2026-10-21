@@ -7,6 +7,15 @@ import { MSG, draftKey } from "../shared/messages.js";
 import { loadSettings, LANGUAGES } from "../shared/settings.js";
 import { buildNote, localDate } from "../shared/card.js";
 import { loadPresets, resolveTheme } from "../shared/theme.js";
+import { createWatchService } from "./watch.js";
+
+const watch = createWatchService({ tracker, storage: chrome.storage.local, loadSettings });
+const IGNORED_KEY = "ignoredTabs"; // storage.session: tabs the user switched off in the popup
+
+/** @returns {Promise<number[]>} */
+async function ignoredTabs() {
+  return (await chrome.storage.session.get(IGNORED_KEY))[IGNORED_KEY] ?? [];
+}
 
 const THEME_CACHE_KEY = "trackerTheme";
 const PENDING_KEY = "pendingCards"; // cards mined while Anki was closed: [{draft, queuedAt}]
@@ -55,11 +64,13 @@ async function setPending(list) {
 }
 
 /**
- * Send one draft to Anki. Duplicates come back as {duplicate: true} unless allowed.
+ * Send one draft to Anki. Duplicates come back as {duplicate: true} unless allowed. Accepted cards are
+ * counted in Cyber Tracker (linked to the watch session of `tabId`).
  * @param {any} draft
  * @param {boolean} allowDuplicate
+ * @param {number | null} [tabId]
  */
-async function sendToAnki(draft, allowDuplicate) {
+async function sendToAnki(draft, allowDuplicate, tabId = null) {
   const settings = await loadSettings();
   const note = buildNote(draft, settings, { allowDuplicate });
   if (!allowDuplicate) {
@@ -70,6 +81,7 @@ async function sendToAnki(draft, allowDuplicate) {
     }
   }
   const noteId = await anki.addNote(settings.anki, note);
+  watch.countCard(tabId, draft, noteId).catch(() => {}); // never holds up the card
   return { noteId, today: await countMined() };
 }
 
@@ -203,9 +215,9 @@ const handlers = {
     return reply.result;
   },
 
-  async [MSG.MINE_CARD](msg) {
+  async [MSG.MINE_CARD](msg, sender) {
     try {
-      return await sendToAnki(msg.draft, Boolean(msg.allowDuplicate));
+      return await sendToAnki(msg.draft, Boolean(msg.allowDuplicate), msg.tabId ?? sender.tab?.id ?? null);
     } catch (e) {
       // Anki closed: keep the card (with its media) and send it later from the popup.
       if (e instanceof anki.AnkiError && /not reachable/.test(e.message)) {
@@ -254,6 +266,36 @@ const handlers = {
     return { ok: true };
   },
 
+  async [MSG.WATCH](msg, sender) {
+    const tabId = sender.tab?.id;
+    if (tabId === undefined || (await ignoredTabs()).includes(tabId)) return { ignored: true };
+    await watch.onEvent(tabId, msg);
+    return { ok: true };
+  },
+
+  async [MSG.WATCH_STATUS](msg) {
+    const st = await watch.status(msg.tabId);
+    return { ...st, ignored: (await ignoredTabs()).includes(msg.tabId) };
+  },
+
+  async [MSG.WATCH_IGNORE](msg) {
+    const list = (await ignoredTabs()).filter((id) => id !== msg.tabId);
+    if (msg.ignore) {
+      list.push(msg.tabId);
+      await watch.tabClosed(msg.tabId); // ends the running session now
+    }
+    await chrome.storage.session.set({ [IGNORED_KEY]: list });
+    return { ignored: msg.ignore };
+  },
+
+  async [MSG.TRACKER_PROJECTS]() {
+    return tracker.listProjects((await loadSettings()).tracker.url);
+  },
+
+  async [MSG.TRACKER_CREATE_PROJECT](msg) {
+    return tracker.createProject((await loadSettings()).tracker.url, msg.name);
+  },
+
   async [MSG.OPEN_NOTE](msg) {
     return anki.openInBrowser((await loadSettings()).anki, msg.noteId);
   },
@@ -293,10 +335,24 @@ chrome.commands.onCommand.addListener((command, tab) => {
   chrome.tabs.sendMessage(tab.id, { type: MSG.COMMAND, command }).catch(() => {});
 });
 
-chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove(draftKey(tabId)));
+chrome.tabs.onRemoved.addListener((tabId) => {
+  chrome.storage.session.remove(draftKey(tabId));
+  watch.tabClosed(tabId);
+});
 
-chrome.runtime.onStartup.addListener(async () => setPending(await pendingCards()));
+// Calls that failed while the tracker was unreachable are retried every 5 minutes.
+chrome.alarms.create("tracker-flush", { periodInMinutes: 5 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "tracker-flush") watch.flush();
+});
+
+chrome.runtime.onStartup.addListener(async () => {
+  setPending(await pendingCards());
+  watch.endLeftovers(); // sessions still open when the browser closed end at their last heartbeat
+});
 
 chrome.runtime.onInstalled.addListener((details) => {
+  // A reload or update orphans the old content scripts: their sessions would never be stopped.
+  watch.endLeftovers();
   if (details.reason === "install") chrome.runtime.openOptionsPage();
 });
