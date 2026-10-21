@@ -84,7 +84,16 @@
         <label>Screenshot width (px) <input type="number" min="240" max="1920" step="10" data-field="cards.screenshotWidth"></label>
         <label>JPEG quality (0.1–1) <input type="number" min="0.1" max="1" step="0.05" data-field="cards.jpegQuality"></label>
       </div>
-      <p class="note">Audio and screenshots are used from the next version (M2).</p>
+      <h3 class="sub-head">Netflix pictures</h3>
+      <p class="note">Netflix's video is copy-protected, so its picture comes from a screenshot of the tab. Chrome allows that
+        only with access to all sites, or for a short while after the extension's hotkey or toolbar icon was used in the tab.
+        Granting access here makes Netflix pictures work every time. Cyber Miner still runs only on YouTube and Netflix;
+        you can remove the access again here or in Chrome's extension settings.</p>
+      <div class="form-actions">
+        <button type="button" id="screenshot-allow">Allow Netflix pictures</button>
+        <button type="button" id="screenshot-remove" class="secondary">Remove access</button>
+      </div>
+      <p class="result" id="screenshot-result"></p>
     </section>
 
     <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">

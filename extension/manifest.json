@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Cyber Miner",
   "short_name": "Cyber Miner",
-  "version": "0.4.1",
+  "version": "0.7.0",
   "description": "Mine Anki sentence cards from YouTube and Netflix subtitles, and log watch time to Cyber Tracker.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwgV3yW4q0c4YbATDEEZyWtwG8wKHwutA4NR6ALytFfHopv+k5oFD00VAGtUhi1gcEvIeSTuMMqN8iayvr43khnpcQ+0m6bkDKDkJEX7CJpZhH3wS3pfEMZQcOdYOFcV0bClpab9liVsaf+J+or9aoCP2AgrPO64D+abKu8c1ZEYfTbN4+dvgh8No56aXDf2ELSNo8uV64HTMNnL0d4L2vv6tpZYjh1VN+3soU+kQDehZl42lklf3Tvr1lAZ8/hIbV6RUu+D/ky/4GOxMLcD2rRDvWiBJDf20zP2dT456MIFwrDM0REBmgyjHCBSCScbeU6edy51eTXSSFA7szgGA9wIDAQAB",
   "minimum_chrome_version": "116",
@@ -36,7 +36,8 @@
     "unlimitedStorage",
     "offscreen",
     "sidePanel",
-    "alarms"
+    "alarms",
+    "activeTab"
   ],
   "host_permissions": [
     "http://127.0.0.1:8765/*",
@@ -44,7 +45,8 @@
   ],
   "optional_host_permissions": [
     "http://*/*",
-    "https://*/*"
+    "https://*/*",
+    "<all_urls>"
   ],
   "content_scripts": [
     {
@@ -52,14 +54,27 @@
         "https://www.youtube.com/*"
       ],
       "js": [
-        "content/page-hook.js"
+        "content/page-hook.js",
+        "content/hooks/youtube.js"
       ],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
       "matches": [
-        "https://www.youtube.com/*"
+        "https://www.netflix.com/*"
+      ],
+      "js": [
+        "content/page-hook.js",
+        "content/hooks/netflix.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://www.netflix.com/*"
       ],
       "js": [
         "content/main.js"
@@ -77,7 +92,8 @@
         "vendor/fonts/*"
       ],
       "matches": [
-        "https://www.youtube.com/*"
+        "https://www.youtube.com/*",
+        "https://www.netflix.com/*"
       ]
     }
   ],

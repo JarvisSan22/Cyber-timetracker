@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns:tt="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ttp:frameRate="24" ttp:frameRateMultiplier="1000 1001">
+<tt:body><tt:div>
+<tt:p begin="00:20:34.567" end="00:20:36.000">I like magic.<tt:br/>It&apos;s &#x2764; fun</tt:p>
+<tt:p begin="00:00:01:12" dur="2s">Frames</tt:p>
+</tt:div></tt:body>
+</tt>

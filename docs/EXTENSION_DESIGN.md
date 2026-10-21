@@ -332,8 +332,12 @@ extension/
 ├── content/
 │   ├── main.js                # picks adapter, mounts overlay, playback events
 │   ├── overlay.js             # subtitle bar (clickable characters), status chip, toast (Shadow DOM)
-│   ├── page-hook.js           # MAIN world: fetch/XHR intercept, Netflix player API
+│   ├── page-hook.js           # MAIN world, shared: fetch/XHR copy of the URLs the site file wants, command plumbing
+│   ├── hooks/                 # MAIN world, per site: which responses to copy, player commands (Netflix seek)
+│   │   ├── youtube.js
+│   │   └── netflix.js
 │   └── sites/
+│       ├── index.js           # adapter interface, picks the adapter by hostname
 │       ├── youtube.js
 │       └── netflix.js
 ├── offscreen/
@@ -438,9 +442,9 @@ Done when: an hour of Japanese YouTube shows as one session under Japanese with 
 
 Decided 2026-10-21: tab audio is started once per Netflix tab (Alt+M or the toolbar icon), then ⌬ in the bar works too; Japanese ruby is dropped from the Sentence (our furigana stays on the target word); Linux and Windows both supported (black frames on Windows leave Picture empty); loading a subtitle file by hand moves to M6.
 
-1. M4a, adapter refactor with no change on YouTube: `content/sites/index.js` picks the adapter by hostname; YouTube subtitle loading (`handleTimedtext`, json3 refetch, translation) moves from `app.js` into `youtube.js` behind `loadSubtitles(target, tlang)`; `controlsHidden(player)`, `audio: "element" | "tab"`, `frame: "canvas" | "tab"` on the adapter; `page-hook.js` keeps the shared plumbing and fetch/XHR copy, player commands move to `content/hooks/youtube.js` / `netflix.js`; no `site: "youtube"` hardcode in the worker. Test YouTube, commit.
-2. M4b, subtitles: hook copies the player manifest (`timedtexttracks`) and `/metadata`; `netflix.js` downloads target + English tracks (`imsc1.1`, `dfxp-ls-sdh` or `webvtt-lssdh-ios8`); `parseTtml` (tick timebase, `<br>`, ruby removed) and `parseVtt` with node fixtures; native `.player-timedtext` hidden.
-3. M4c, mining: seek through Netflix's player API (setting `currentTime` gives M7375); `tabCapture` stream kept in the offscreen document and routed back to the speakers, recorder "tab" mode; `captureVisibleTab` + crop, black-frame check; title "Show S1E3"; manifest adds netflix.com and `tabCapture`.
+1. M4a, adapter refactor with no change on YouTube (built; see DECISIONS): `content/sites/index.js` defines the adapter and picks it by hostname; YouTube subtitle loading moved from `app.js` into `youtube.js` behind `subtitles(video, target, {…callbacks})`; `seek()` (awaited by the recorder), `controlsHidden()`, `onNavigate()` on the adapter; `page-hook.js` keeps the shared plumbing and fetch/XHR copy, player commands moved to `content/hooks/youtube.js`. Test YouTube, commit.
+2. M4b, subtitles (built; see DECISIONS): hook copies the player manifest (`timedtexttracks`) and `/metadata`; `netflix.js` downloads target + English tracks (`imsc1.1`, `dfxp-ls-sdh` or `webvtt-lssdh-ios8`); `parseTtml` (tick timebase, `<br>`, ruby removed) and `parseVtt` with node fixtures; native `.player-timedtext` hidden.
+3. M4c, mining: seek through Netflix's player API (setting `currentTime` gives M7375); adapter gets `audio: "element" | "tab"` and `frame: "canvas" | "tab"`; `tabCapture` stream kept in the offscreen document and routed back to the speakers, recorder "tab" mode; `captureVisibleTab` + crop, black-frame check; title "Show S1E3"; manifest adds netflix.com and `tabCapture`.
 4. M4d: next episode (new `/watch/<id>`) starts a new session; image subtitles (`nflx-cmisc` only) show a message; hand checklist on Linux and Windows.
 
 Done when: card + watch session from a Netflix episode, and autoplay to the next episode starts a new session.

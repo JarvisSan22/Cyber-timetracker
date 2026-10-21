@@ -1,26 +1,27 @@
 // @ts-check
-/** Content script app on YouTube watch pages: finds the target subtitle track, shows the overlay, mines cards. */
+/** Content script app on video pages: finds the target subtitle track, shows the overlay, mines cards.
+ * Site-specific parts sit behind the adapter (content/sites/). */
 
-import { youtube } from "./sites/youtube.js";
-import { onTimedtext } from "./bridge.js";
+import { pickAdapter } from "./sites/index.js";
 import { createOverlay } from "./overlay.js";
 import { captureFrame, recordRange, playRange } from "./recorder.js";
 import { createWatcher } from "./watcher.js";
+import { pictureRect } from "../shared/frame.js";
+import { requestTabAudio } from "./tabaudio.js";
 import { ask, MSG } from "../shared/messages.js";
 import { loadSettings, saveSettings } from "../shared/settings.js";
 import {
-  baseLang, cueIndexAt, cueShowing, describeTimedtextUrl, formatTime, joinCues, overlappingText, parseJson3,
-  pickTargetTrack, sentenceText, translationUrl,
+  baseLang, cueIndexAt, cueShowing, formatTime, joinCues, overlappingText, pickTargetTrack, sentenceText,
 } from "../shared/subtitles.js";
 
-const adapter = youtube;
+const adapter = /** @type {import("./sites/index.js").SiteAdapter} */ (pickAdapter());
 
 /** @typedef {import("../shared/subtitles.js").Cue} Cue */
 
 const state = {
   /** @type {import("../shared/settings.js").Settings | null} */
   settings: null,
-  /** @type {import("./sites/youtube.js").VideoInfo | null} */
+  /** @type {import("./sites/index.js").VideoInfo | null} */
   video: null,
   /** @type {import("../shared/subtitles.js").Track | null} */
   target: null,
@@ -29,7 +30,6 @@ const state = {
   primary: [],
   /** @type {Cue[]} */
   translation: [],
-  primaryUrl: "",
   /** @type {"blur" | "show" | "hide"} */
   translationMode: "blur",
   active: false,
@@ -54,6 +54,10 @@ const watcher = createWatcher({
   idleStopMs: () => (state.settings?.tracker.idleStopMin ?? 10) * 60_000,
 });
 const pageStyle = new CSSStyleSheet();
+/** Setup steps in the page console, so a site that changed shows where it stops. */
+const log = (/** @type {any[]} */ ...args) => console.info("[Cyber Miner]", ...args);
+/** Stops the subtitle callbacks of the previous video. */
+let stopSubtitles = () => {};
 
 export async function start() {
   state.settings = await loadSettings();
@@ -61,10 +65,12 @@ export async function start() {
     {
       onMine: () => {
         openSidebar();
+        shareTabAudio();
         mine({ quick: false });
       },
       onPickWord: (pick) => {
         openSidebar();
+        shareTabAudio();
         mine({ quick: false, pick });
       },
       onOpenNote: (noteId) => ask(MSG.OPEN_NOTE, { noteId }).catch(() => {}),
@@ -73,12 +79,12 @@ export async function start() {
     },
     await loadSheets(),
   );
+  overlay.host.classList.add(`site-${adapter.site}`); // default spot differs per site (control bar height)
   overlay.setPosition(state.settings.overlay.position);
   document.adoptedStyleSheets = [...document.adoptedStyleSheets, pageStyle, await fontSheet()];
   applyTheme();
 
-  onTimedtext((url, body) => handleTimedtext(url, body));
-  document.addEventListener("yt-navigate-finish", () => setupVideo());
+  adapter.onNavigate(() => setupVideo());
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg?.type === MSG.COMMAND) runCommand(msg.command);
     if (msg?.type === MSG.RERECORD && state.mining?.draftId === msg.draftId) adjustAndRecord(msg.adjust ?? {});
@@ -99,7 +105,7 @@ export async function start() {
   document.addEventListener("keydown", onKey, true);
   setInterval(tick, 100);
   setInterval(() => watcher.tick(), 1000);
-  // Leaving YouTube in this tab (or reloading) ends the session now, not at the next browser start.
+  // Leaving the site in this tab (or reloading) ends the session now, not at the next browser start.
   window.addEventListener("pagehide", () => watcher.detach());
   setupVideo();
 }
@@ -154,33 +160,57 @@ async function setupVideo() {
   state.target = null;
   state.primary = [];
   state.translation = [];
-  state.primaryUrl = "";
+  stopSubtitles();
   stopMining();
   if (!adapter.isWatchPage()) return;
 
+  log(`${adapter.site}: setting up ${adapter.currentVideoId()}`);
   const video = await adapter.info();
-  if (token !== state.setupToken || !video) return;
+  if (token !== state.setupToken) return;
+  if (!video) {
+    log(`${adapter.site}: no video info from the player (subtitle list not found)`);
+    overlay.setStatus({ text: "No subtitle list from the player", flash: true });
+    return;
+  }
+  log("video", { title: video.title, show: video.show, spoken: video.spokenLang, tracks: video.tracks.map((t) => `${t.languageCode}${t.kind ? `/${t.kind}` : ""}${t.image ? "/image" : ""}`) });
   state.video = video;
   const settings = /** @type {import("../shared/settings.js").Settings} */ (state.settings);
-  const target = pickTargetTrack(video.tracks, settings.languages.targets);
+  const target = pickTargetTrack(video.tracks, settings.languages.targets, video.spokenLang);
   const player = adapter.getPlayerElement();
   if (player) overlay.mount(player);
+  else log("player element not found");
   ankiStatus();
   if (!target) {
     overlay.setVisible(true);
     overlay.setLine("", "", "");
-    overlay.setStatus({ text: video.tracks.length ? "No ja/zh/it subtitles" : "No subtitles", flash: true });
+    const spoken = video.spokenLang && !settings.languages.targets.includes(baseLang(video.spokenLang));
+    overlay.setStatus({ text: spoken ? `Audio is ${video.spokenLang}, not ${settings.languages.targets.join("/")}` : video.tracks.length ? "No ja/zh/it subtitles" : "No subtitles", flash: true });
     return;
   }
   state.target = target;
   state.lang = baseLang(target.languageCode);
+  log("target track", target.languageCode, target.kind || "");
   overlay.setStatus({ text: `${state.lang}${target.kind === "asr" ? " auto" : ""} · loading`, flash: true });
   activate();
   watcher.attach({ videoId: video.videoId, title: video.title, lang: state.lang, site: adapter.site });
 
-  // The player may have fetched the track before we loaded.
-  for (const { url, body } of await adapter.capturedSoFar().catch(() => [])) handleTimedtext(url, body);
-  if (!state.primary.length) await adapter.enableTrack(target).catch((e) => overlay.setStatus({ text: e.message, flash: true }));
+  stopSubtitles = adapter.subtitles(video, target, {
+    lang: state.lang,
+    translationLang: settings.languages.translation,
+    onPrimary: (cues) => {
+      log(`${cues.length} ${state.lang} lines`);
+      state.primary = cues;
+      overlay.setStatus({ text: `${state.lang}${target.kind === "asr" ? " auto" : ""} · ${cues.length} lines`, flash: true });
+    },
+    onTranslation: (cues) => {
+      log(`${cues.length} translation lines`);
+      state.translation = cues;
+    },
+    onError: (e) => {
+      log("subtitles failed:", e.message);
+      overlay.setStatus({ text: e.message, flash: true });
+    },
+  });
 }
 
 function activate() {
@@ -194,65 +224,6 @@ function deactivate() {
   state.active = false;
   pageStyle.replaceSync("");
   overlay?.setLine("", "", "");
-}
-
-/**
- * @param {string} url
- * @param {string} body
- */
-async function handleTimedtext(url, body) {
-  const video = state.video;
-  const target = state.target;
-  if (!video || !target) return;
-  const info = describeTimedtextUrl(url);
-  if (info.videoId !== video.videoId || info.translated || baseLang(info.lang) !== state.lang) return;
-  if (state.primary.length && state.primaryUrl === url) return;
-
-  let cues = tryParse(body, "primary");
-  if (!cues) cues = await refetchJson3(url, "primary");
-  if (!cues?.length || state.video !== video) return;
-  state.primary = cues;
-  state.primaryUrl = url;
-  overlay.setStatus({ text: `${state.lang}${target.kind === "asr" ? " auto" : ""} · ${cues.length} lines`, flash: true });
-  loadTranslation(url, video);
-}
-
-/**
- * @param {string} body
- * @param {"primary" | "translation"} role
- * @param {string} [lang]
- */
-function tryParse(body, role, lang = state.lang) {
-  try {
-    return parseJson3(body, lang, role);
-  } catch {
-    return null; // not json3 (srv3/XML) or empty
-  }
-}
-
-/**
- * @param {string} url
- * @param {"primary" | "translation"} role
- * @param {string} [lang]
- */
-async function refetchJson3(url, role, lang = state.lang) {
-  const u = new URL(url);
-  u.searchParams.set("fmt", "json3");
-  const res = await fetch(u, { credentials: "include" }).catch(() => null);
-  if (!res?.ok) return null;
-  return tryParse(await res.text(), role, lang);
-}
-
-/**
- * @param {string} primaryUrl
- * @param {import("./sites/youtube.js").VideoInfo} video
- */
-async function loadTranslation(primaryUrl, video) {
-  const settings = /** @type {import("../shared/settings.js").Settings} */ (state.settings);
-  const lang = settings.languages.translation;
-  if (lang === state.lang) return;
-  const cues = await refetchJson3(translationUrl(primaryUrl, video.tracks, lang), "translation", lang);
-  if (state.video === video && cues) state.translation = cues;
 }
 
 // --- display ---
@@ -272,7 +243,7 @@ function tick() {
   const player = adapter.getPlayerElement();
   if (!video || !player) return;
   if (!player.contains(overlay.host)) overlay.mount(player);
-  overlay.setControlsHidden(player.classList.contains("ytp-autohide"));
+  overlay.setControlsHidden(adapter.controlsHidden(player));
   if (adapter.isAd()) {
     overlay.setLine("", "", state.lang);
     return;
@@ -330,10 +301,16 @@ function replayLine() {
   const i = currentIndex();
   if (!video || i < 0) return;
   state.replaying = true;
-  playRange(video, state.primary[i].start_ms, state.primary[i].end_ms).finally(() => (state.replaying = false));
+  playRange(video, state.primary[i].start_ms, state.primary[i].end_ms, adapter.seek).finally(() => (state.replaying = false));
 }
 
 // --- mining ---
+
+/** Sites that record the tab's audio: show Chrome's "Share this tab" prompt now, while the click counts
+ * as a user gesture (once per page; later calls reuse the stream). recordAudio waits for it. */
+function shareTabAudio() {
+  if (adapter.audio === "tab") requestTabAudio().catch(() => {}); // the error shows when recording
+}
 
 /**
  * Ask the worker to open the side panel. Called first thing in a click handler: Chrome only opens it
@@ -380,13 +357,13 @@ async function mine({ quick, pick }) {
     source: `${state.video.title} · ${formatTime(cue.start_ms)}`,
     sourceUrl: adapter.sourceUrl(state.video.videoId, cue.start_ms),
     site: adapter.site,
-    show: state.video.author,
+    show: state.video.show,
     /** @type {{data: string, ext: string} | undefined} */
     picture: undefined,
     /** @type {{data: string, ext: string} | undefined} */
     audio: undefined,
   };
-  const picture = await captureFrame(video, settings.cards.screenshotWidth, settings.cards.jpegQuality);
+  const picture = await takePicture(video, settings);
   if (picture) draft.picture = picture;
 
   const startMs = Math.max(0, cue.start_ms - settings.cards.padBeforeMs);
@@ -412,6 +389,38 @@ async function mine({ quick, pick }) {
   }
 }
 
+/**
+ * The card picture, the same size and format on every site: the <video> drawn on a canvas, or (DRM
+ * players) a tab screenshot cropped to the picture, taken with our bar and the player's controls hidden.
+ * @param {HTMLVideoElement} video
+ * @param {import("../shared/settings.js").Settings} settings
+ */
+async function takePicture(video, settings) {
+  const { screenshotWidth: width, jpegQuality: quality } = settings.cards;
+  if (adapter.frame !== "tab") return captureFrame(video, width, quality);
+  overlay.setVisible(false);
+  pageStyle.replaceSync(`${adapter.nativeCaptionsCss}\n${adapter.cleanFrameCss ?? ""}`);
+  try {
+    // Let the page repaint without them, and settle after the side panel or fullscreen exit resized it.
+    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const box = video.getBoundingClientRect();
+    const rect = pictureRect({ left: box.left, top: box.top, width: box.width, height: box.height }, video.videoWidth, video.videoHeight);
+    const picture = await ask(MSG.CAPTURE_FRAME, { rect, viewportWidth: window.innerWidth, width, quality });
+    if (!picture) log("screenshot was black (DRM): card without picture");
+    return picture;
+  } catch (e) {
+    const message = /** @type {Error} */ (e).message;
+    log("screenshot failed:", message);
+    // Chrome allows tab screenshots only after the extension was used in this tab (hotkey or toolbar icon).
+    if (/activeTab/.test(message)) overlay.showToast("No picture: allow Netflix pictures in Cyber Miner's options", { error: true });
+    return null;
+  } finally {
+    pageStyle.replaceSync(state.active ? adapter.nativeCaptionsCss : "");
+    overlay.setVisible(true);
+  }
+}
+
 /** Record (or re-record) the mining line's audio and pass it to the side panel. True when the MP3 is ready. */
 async function recordAudio() {
   const mining = state.mining;
@@ -427,8 +436,10 @@ async function recordAudio() {
   const wanted = { from: mining.startMs, to: mining.endMs };
   update({ state: "recording" }, undefined, { clip: wanted });
   try {
-    const clip = await recordRange(video, mining.startMs, mining.endMs, { isCancelled });
-    video.currentTime = returnTo;
+    const audioTracks = adapter.audio === "tab" ? (await requestTabAudio()).getAudioTracks() : undefined;
+    if (isCancelled()) return false;
+    const clip = await recordRange(video, mining.startMs, mining.endMs, { seek: adapter.seek, isCancelled, audioTracks });
+    await adapter.seek(returnTo * 1000);
     update({ state: "encoding" });
     const mp3 = await ask(MSG.ENCODE_MP3, { data: clip.data, kbps: settings.cards.mp3Kbps });
     if (isCancelled()) return false;
@@ -438,7 +449,8 @@ async function recordAudio() {
     return true;
   } catch (e) {
     if (isCancelled()) return false;
-    video.currentTime = returnTo;
+    log("recording failed:", /** @type {Error} */ (e).message);
+    await adapter.seek(returnTo * 1000);
     update({ state: "error", message: /** @type {Error} */ (e).message });
     return false;
   }

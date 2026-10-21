@@ -112,7 +112,7 @@ chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
 
 // --- subtitle bar position ---
 
-// Shown only while the bar has been moved; open YouTube tabs follow the settings change.
+// Shown only while the bar has been moved; open video tabs follow the settings change.
 loadSettings().then((settings) => {
   const button = /** @type {HTMLButtonElement} */ ($("reset-position"));
   button.hidden = !settings.overlay.position;

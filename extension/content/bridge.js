@@ -6,13 +6,13 @@ let nextId = 1;
 /** @type {Map<number, {resolve: (v: any) => void, reject: (e: Error) => void}>} */
 const pending = new Map();
 /** @type {((url: string, body: string) => void)[]} */
-const timedtextListeners = [];
+const capturedListeners = [];
 
 window.addEventListener("message", (event) => {
   const msg = event.data;
   if (event.source !== window || !msg || msg[TAG] !== true || msg.dir !== "to-content") return;
-  if (msg.type === "timedtext") {
-    for (const fn of timedtextListeners) fn(msg.url, msg.body);
+  if (msg.type === "captured") {
+    for (const fn of capturedListeners) fn(msg.url, msg.body);
   } else if (msg.type === "reply" && pending.has(msg.id)) {
     const { resolve, reject } = /** @type {any} */ (pending.get(msg.id));
     pending.delete(msg.id);
@@ -37,7 +37,10 @@ export function callPage(command, args = {}, timeoutMs = 5000) {
   });
 }
 
-/** @param {(url: string, body: string) => void} fn */
-export function onTimedtext(fn) {
-  timedtextListeners.push(fn);
+/**
+ * A response the page hook copied (which ones: the site's hook file decides).
+ * @param {(url: string, body: string) => void} fn
+ */
+export function onCaptured(fn) {
+  capturedListeners.push(fn);
 }

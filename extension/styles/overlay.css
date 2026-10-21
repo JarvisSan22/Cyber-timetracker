@@ -28,9 +28,12 @@
   --aug-border-bg: linear-gradient(135deg, var(--accent), var(--line) 40%, var(--line) 70%, var(--accent-2));
 }
 :host(.controls-hidden) .bar { bottom: 10px; }
+/* Netflix's control bar is taller and scales with the player. */
+:host(.site-netflix) .bar { bottom: 15cqh; }
+:host(.site-netflix.controls-hidden) .bar { bottom: 6cqh; }
 /* Moved by the user (press and hold): --x = centre, --y = bottom edge, both % of the player. It stays
-   there when YouTube's controls hide. */
-.bar.custom, :host(.controls-hidden) .bar.custom { left: calc(var(--x) * 1%); bottom: calc(var(--y) * 1%); }
+   there when the controls hide, on every site (hence !important over the per-site defaults above). */
+.bar.custom { left: calc(var(--x) * 1%) !important; bottom: calc(var(--y) * 1%) !important; }
 /* Holding: a line fills along the bottom edge during the 0.4 s it takes to pick the bar up. */
 .hold-meter { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--accent-2); pointer-events: none; }
 .bar.holding .hold-meter { animation: cm-hold 0.4s linear forwards; }

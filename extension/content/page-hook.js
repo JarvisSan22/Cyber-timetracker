@@ -1,36 +1,53 @@
-// Runs in the page's own JS world ("world": "MAIN") at document_start, so it sees YouTube's requests and
-// player object. It copies the player's subtitle responses and answers a few player calls for the content
-// script. Talks to the content script only through window.postMessage. Classic script, no imports.
+// Runs in the page's own JS world ("world": "MAIN") at document_start, so it sees the site's requests and
+// player object. Shared part: copies the responses the site file asks for (fetch and XHR) and answers
+// commands for the content script. The site file (content/hooks/<site>.js, listed right after this one in
+// the manifest) registers which URLs to copy and its player commands. Talks to the content script only
+// through window.postMessage. Classic script, no imports.
 (() => {
   if (window.__cyberMinerHook) return;
   window.__cyberMinerHook = true;
 
   const TAG = "__cyberMiner";
-  const captured = []; // recent subtitle responses, for a content script that loads after the player
+  const captured = []; // recent responses, for a content script that loads after the player
   const MAX_CAPTURED = 30;
+  /** Set by the site file: wantsUrl(url) picks responses to copy; commands answer the content script. */
+  const site = { wantsUrl: (url) => false, onSkipped: null, commands: {} };
+
+  /** Returns keep(url, body), for site files that copy data some other way than by URL. */
+  window.__cyberMinerRegister = (def) => {
+    delete window.__cyberMinerRegister; // one site per page
+    if (def.wantsUrl) site.wantsUrl = def.wantsUrl;
+    if (def.onSkipped) site.onSkipped = def.onSkipped;
+    Object.assign(site.commands, def.commands || {});
+    return { keep };
+  };
 
   function toContent(message) {
     window.postMessage({ [TAG]: true, dir: "to-content", ...message }, location.origin);
   }
 
-  function isTimedtext(url) {
-    return typeof url === "string" && url.includes("/api/timedtext");
+  function wanted(url) {
+    try {
+      return typeof url === "string" && site.wantsUrl(url);
+    } catch {
+      return false;
+    }
   }
 
   function keep(url, body) {
     const absolute = new URL(url, location.href).toString();
     captured.push({ url: absolute, body });
     if (captured.length > MAX_CAPTURED) captured.shift();
-    toContent({ type: "timedtext", url: absolute, body });
+    toContent({ type: "captured", url: absolute, body });
   }
 
-  // --- copy subtitle responses (fetch and XHR) ---
+  // --- copy responses (fetch and XHR) ---
   const originalFetch = window.fetch;
   window.fetch = async function (input, init) {
     const response = await originalFetch.apply(this, arguments);
     try {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input?.url;
-      if (isTimedtext(url) && response.ok) response.clone().text().then((body) => keep(url, body), () => {});
+      if (wanted(url) && response.ok) response.clone().text().then((body) => keep(url, body), () => {});
     } catch {
       // never break the page
     }
@@ -44,10 +61,13 @@
     return originalOpen.apply(this, arguments);
   };
   XMLHttpRequest.prototype.send = function () {
-    if (isTimedtext(this.__cyberMinerUrl)) {
+    if (wanted(this.__cyberMinerUrl)) {
       this.addEventListener("load", () => {
         try {
-          if (this.status === 200 && (this.responseType === "" || this.responseType === "text")) keep(this.__cyberMinerUrl, this.responseText);
+          if (this.status !== 200) return;
+          if (this.responseType === "" || this.responseType === "text") keep(this.__cyberMinerUrl, this.responseText);
+          else if (this.responseType === "json") keep(this.__cyberMinerUrl, JSON.stringify(this.response));
+          else site.onSkipped?.(this.__cyberMinerUrl, this.responseType);
         } catch {
           // ignore
         }
@@ -56,53 +76,13 @@
     return originalSend.apply(this, arguments);
   };
 
-  // --- player calls ---
-  function player() {
-    return document.getElementById("movie_player");
-  }
-
-  function info() {
-    const p = player();
-    if (!p?.getVideoData) return null;
-    const data = p.getVideoData() || {};
-    const response = p.getPlayerResponse?.() || {};
-    const tracks = response.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
-    return {
-      videoId: data.video_id || "",
-      title: data.title || response.videoDetails?.title || "",
-      author: data.author || response.videoDetails?.author || "",
-      tracks: tracks.map((t) => ({
-        languageCode: t.languageCode,
-        kind: t.kind || "",
-        name: t.name?.simpleText || t.name?.runs?.map((r) => r.text).join("") || "",
-      })),
-    };
-  }
-
-  async function enableTrack({ languageCode, kind }) {
-    const p = player();
-    if (!p?.setOption) throw new Error("YouTube player not ready");
-    p.loadModule?.("captions");
-    let list = [];
-    for (let i = 0; i < 20 && !list.length; i++) {
-      list = p.getOption?.("captions", "tracklist") || [];
-      if (!list.length) await new Promise((r) => setTimeout(r, 150));
-    }
-    const match = list.find((t) => t.languageCode === languageCode && (kind === "asr" ? t.kind === "asr" : t.kind !== "asr"));
-    p.setOption("captions", "track", match || { languageCode });
-    return Boolean(match);
-  }
-
-  const commands = {
-    info,
-    dump: () => captured,
-    enableTrack,
-  };
+  // --- commands from the content script ---
+  site.commands.dump = () => captured;
 
   window.addEventListener("message", async (event) => {
     const msg = event.data;
     if (event.source !== window || !msg || msg[TAG] !== true || msg.dir !== "to-page") return;
-    const command = commands[msg.command];
+    const command = site.commands[msg.command];
     try {
       if (!command) throw new Error(`Unknown command ${msg.command}`);
       toContent({ type: "reply", id: msg.id, result: await command(msg.args || {}) });

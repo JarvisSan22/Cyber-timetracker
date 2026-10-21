@@ -163,3 +163,38 @@ All in the extension; the tracker endpoints already existed (sessions) or came w
 - **Position** is `{x, y}` in % of the player: x = the bar's centre, y = its bottom edge from the player's bottom, so the bar grows upwards when a line wraps or the translation shows. It is clamped so the whole bar stays inside the player, again whenever the player is resized (theater mode, fullscreen). A moved bar stays put when YouTube's controls hide; the default spot still drops to the bottom.
 - **One position for every video**, saved on release in the synced settings (`overlay.position`, null = default). Every open YouTube tab follows the settings change.
 - **Reset**: ⟲ on the bar (shown on hover once moved) and "Reset subtitle position" in the popup (shown while moved), in case the bar ends up hard to grab.
+
+## Cyber Miner M4a: site adapters
+
+Groundwork for Netflix with no change in behaviour on YouTube.
+
+- **`app.js` talks only to the adapter** (`content/sites/index.js` holds the interface and picks it by hostname). The adapter owns everything a site does differently: watch page and navigation, player element, ad check, control-bar autohide, video info (`title`, `show`, `tracks`), subtitle loading, seeking, source URL and the CSS that hides native captions.
+- **Subtitles are callbacks**: `subtitles(video, target, {lang, translationLang, onPrimary, onTranslation, onError})` returns a stop function. YouTube's json3 capture, refetch and `tlang` translation moved there from `app.js`; Netflix will download both tracks from its manifest behind the same call.
+- **Seeking goes through the adapter and is awaited** (recording, replay, return after recording), because Netflix breaks when `currentTime` is set. YouTube's `seek` sets `currentTime` and waits for `seeked` (3 s at most).
+- **Page hook in two files**, both MAIN world at document_start: `content/page-hook.js` (shared: copies fetch/XHR responses whose URL the site wants, keeps the last 30, message plumbing, `dump`) and `content/hooks/<site>.js` (registers its URL filter and player commands through a one-shot `__cyberMinerRegister`). The bridge event is now `captured` instead of `timedtext`.
+
+## Cyber Miner M4b: Netflix subtitles
+
+- **Manifest after decryption, not by URL**: the manifest request (`/msl/playapi/cadmium/licensedmanifest/1`) and its response are MSL-encrypted (`{"headerdata": …}`), so copying the network response is useless. `content/hooks/netflix.js` watches JSON.parse (and `Response.json()`) for the decrypted result with `movieId` and `timedtexttracks` (older) or `textTracks` (newer; each track's formats under `ttDownloadables` or `downloadables`), and passes on `{movieId, timedtexttracks, audio}` through the shared capture list, so a content script that loads late still gets it (`dump`). /metadata is plain JSON and is copied by URL. Same approach as Tithen-Firion's "Netflix - subtitle downloader" userscript (MIT).
+- **Text formats are asked for**: the hook adds `imsc1.1`, `dfxp-ls-sdh`, `webvtt-lssdh-ios8` and `simplesdh` to the `profiles` of the manifest request (the JSON.stringify'd object whose `url` names the manifest) and sets `showAllSubDubTracks`. Without that Netflix may list only image subtitles or only some languages.
+- **Both tracks are downloaded directly** from the manifest URLs by the content script (no track switching, unlike YouTube). Format preference: imsc1.1, dfxp-ls-sdh, simplesdh, webvtt. Track order per language: subtitles, then closed captions (sound descriptions), then image-only (`nflx-cmisc`; shown as "Image subtitles: cannot be read").
+- **The spoken language picks the target**: Netflix offers subtitles in many languages, so the target is the language of the audio playing (player API `getAudioTrack()`, else the manifest's original audio). Audio not ja/zh/it shows "Audio is en, not ja/zh/it". Switching the audio track needs a page reload.
+- **Parsers** (`shared/subformats.js`, no DOMParser so Node tests run them): TTML with tick, clock, frame and offset times; ruby text dropped (by `tts:ruby="text"` on the span or on a referenced style), ruby base kept; layout line breaks in the file ignored (no space in ja/zh), `<br/>` kept. WebVTT with cue settings, tags and `<rt>` stripped.
+- **Title**: "Show S1E3" from /metadata, else the player's title bar, else the page title.
+- **Navigation**: Netflix has no navigation event; the adapter polls the address every 0.5 s, so the next episode (`/watch/<new id>`) sets up again.
+- **Bar position**: the default spot sits higher on Netflix (15% of the player above the bottom, 6% while the controls are hidden); a moved bar uses the same saved position on both sites.
+- **Seek** uses Netflix's player API already (A/D keys, replay). Audio recording and the picture still use the YouTube way and fail on Netflix's DRM video until M4c.
+
+## Cyber Miner M4c (part): Netflix screenshot
+
+- **Tab screenshot instead of canvas** on Netflix (adapter `frame: "tab"`): DRM video draws black on a canvas. The page asks the worker (`capture-frame`), which calls `chrome.tabs.captureVisibleTab`, crops to the picture and scales it in an OffscreenCanvas, and returns the same `{data, ext: "jpg"}` at the same width and JPEG quality as YouTube's canvas frames.
+- **Clean frame**: for the capture the page hides our subtitle bar and, with a temporary style, everything in Netflix's player that is neither the video nor a box containing it (controls, title, pause dimming); it waits 300 ms and two frames so the page has repainted and settled after the side panel opened or fullscreen ended, then restores both.
+- **Crop** is the picture inside the `<video>` element (`shared/frame.js` `pictureRect`, letterbox bars left out), converted to screenshot pixels by screenshot width / `innerWidth` (device pixel ratio and zoom).
+- **Black frame** (hardware DRM on Windows): no picture, the card goes without one; the console says so. Same black check as the canvas path, shared in `shared/frame.js`.
+- **Permission**: Chrome refuses captureVisibleTab with only a host permission ("Either the '<all_urls>' or 'activeTab' permission is required"). `activeTab` (hotkey or toolbar icon in the tab) did not work in testing on Netflix, so Options → Cards → "Allow Netflix pictures" requests the optional `<all_urls>` host permission (removable there). Without it the card goes without a picture and the toast points to Options. The content scripts still match only YouTube and Netflix.
+
+## Cyber Miner M4c (part): Netflix audio
+
+- **Chrome's "Share this tab" prompt** (`getDisplayMedia` with `preferCurrentTab`, from the content script) instead of `chrome.tabCapture`: tabCapture needs the same activeTab grant that did not work for screenshots, and no install-time or Options permission turns either on. The prompt appears on the first click on ⌬ or a word in a Netflix tab (it needs a click in the page; Alt+M alone cannot show it, and recording then says to click ⌬ once). "Also share tab audio" must stay ticked.
+- **One stream per page**: the video track is stopped at once, the audio track is kept until the tab closes or reloads or "Stop sharing" is pressed, and every recording and re-recording in the tab uses it. `suppressLocalAudioPlayback: false`, so the video stays audible.
+- **Same recording flow as YouTube**: `recordRange` gets the shared tab's audio tracks (adapter `audio: "tab"`) instead of `video.captureStream()`, replays the clip in real time through Netflix's player seek and leaves the stream open. Then the same MP3 encoding. Everything the tab plays is recorded, so a muted tab gives a silent clip.

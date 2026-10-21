@@ -1,5 +1,8 @@
 // @ts-check
-/** Screenshot and audio clip straight from the <video> element (YouTube is not DRM-protected). */
+/** Screenshot and audio clip straight from the <video> element (YouTube is not DRM-protected).
+ * Seeking goes through the site adapter: some players break when currentTime is set directly. */
+
+import { isBlack } from "../shared/frame.js";
 
 /** @param {Blob} blob */
 function blobToBase64(blob) {
@@ -27,7 +30,7 @@ export async function captureFrame(video, width, quality) {
   const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext("2d"));
   try {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    if (isBlack(ctx, canvas.width, canvas.height)) return null;
+    if (isBlack(ctx.getImageData(0, 0, canvas.width, canvas.height).data)) return null;
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
     return blob ? { data: await blobToBase64(blob), ext: "jpg" } : null;
   } catch {
@@ -35,26 +38,6 @@ export async function captureFrame(video, width, quality) {
   }
 }
 
-/**
- * A frame that is (almost) all black: DRM output or a video still loading.
- * @param {CanvasRenderingContext2D} ctx
- * @param {number} w
- * @param {number} h
- */
-function isBlack(ctx, w, h) {
-  const { data } = ctx.getImageData(0, 0, w, h);
-  const step = Math.max(4, Math.floor(data.length / 4 / 2000) * 4); // ~2000 samples
-  for (let i = 0; i < data.length; i += step) if (data[i] + data[i + 1] + data[i + 2] > 30) return false;
-  return true;
-}
-
-/**
- * @param {HTMLVideoElement} video
- * @param {string} type
- */
-function once(video, type) {
-  return new Promise((resolve) => video.addEventListener(type, resolve, { once: true }));
-}
 
 /**
  * Replay [startMs, endMs] in real time and record the element's audio. Leaves the video paused.
@@ -63,14 +46,15 @@ function once(video, type) {
  * @param {HTMLVideoElement} video
  * @param {number} startMs
  * @param {number} endMs
- * @param {{isCancelled?: () => boolean}} [options]
+ * @param {{seek: (ms: number) => Promise<void>, isCancelled?: () => boolean, audioTracks?: MediaStreamTrack[]}} options
+ *   audioTracks: record these (the shared tab's audio) instead of the element's own audio
  * @returns {Promise<{data: string, mime: string, fromMs: number, toMs: number}>} base64 WebM/Opus and the span actually played
  */
-export async function recordRange(video, startMs, endMs, { isCancelled = () => false } = {}) {
-  const stream = /** @type {MediaStream} */ (/** @type {any} */ (video).captureStream());
-  const audio = stream.getAudioTracks();
+export async function recordRange(video, startMs, endMs, { seek, isCancelled = () => false, audioTracks }) {
+  const own = audioTracks ? null : /** @type {MediaStream} */ (/** @type {any} */ (video).captureStream());
+  const audio = audioTracks ?? /** @type {MediaStream} */ (own).getAudioTracks();
   if (!audio.length) {
-    stream.getTracks().forEach((t) => t.stop());
+    own?.getTracks().forEach((t) => t.stop());
     throw new Error("This video gives no audio to record.");
   }
   const mime = "audio/webm;codecs=opus";
@@ -78,13 +62,12 @@ export async function recordRange(video, startMs, endMs, { isCancelled = () => f
   /** @type {Blob[]} */
   const chunks = [];
   recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-  const stopped = once(/** @type {any} */ (recorder), "stop");
+  const stopped = new Promise((resolve) => recorder.addEventListener("stop", resolve, { once: true }));
 
   const rate = video.playbackRate;
   video.playbackRate = 1;
   video.pause();
-  video.currentTime = Math.max(0, startMs) / 1000;
-  await once(video, "seeked");
+  await seek(startMs);
   const fromMs = video.currentTime * 1000;
   recorder.start();
   let restarts = 0;
@@ -105,7 +88,7 @@ export async function recordRange(video, startMs, endMs, { isCancelled = () => f
   }
   const toMs = video.currentTime * 1000;
   await stopped;
-  stream.getTracks().forEach((t) => t.stop());
+  own?.getTracks().forEach((t) => t.stop()); // a shared tab stream stays open for the next card
   if (isCancelled()) throw new Error("Recording cancelled");
   return { data: await blobToBase64(new Blob(chunks, { type: mime })), mime, fromMs, toMs };
 }
@@ -115,10 +98,10 @@ export async function recordRange(video, startMs, endMs, { isCancelled = () => f
  * @param {HTMLVideoElement} video
  * @param {number} startMs
  * @param {number} endMs
+ * @param {(ms: number) => Promise<void>} seek
  */
-export async function playRange(video, startMs, endMs) {
-  video.currentTime = Math.max(0, startMs) / 1000;
-  await once(video, "seeked");
+export async function playRange(video, startMs, endMs, seek) {
+  await seek(startMs);
   await video.play();
   const limit = performance.now() + (endMs - startMs) + 4000;
   while (video.currentTime * 1000 < endMs && !video.paused && performance.now() < limit) await new Promise((r) => setTimeout(r, 30));

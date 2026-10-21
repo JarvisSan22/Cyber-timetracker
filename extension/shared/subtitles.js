@@ -19,6 +19,7 @@ const LAST_WORD_MS = 600;
  * @property {string} languageCode "ja", "zh-Hans", "it", "en"
  * @property {string} [kind]       "asr" for auto-generated
  * @property {string} [name]
+ * @property {boolean} [image]     subtitles as pictures only (some Netflix tracks): cannot be read
  */
 
 /** "zh-Hans" -> "zh", "pt-BR" -> "pt". */
@@ -130,19 +131,26 @@ export function sentenceText(text, lang) {
  * Which track to mine. The spoken language has the auto-generated (asr) track, so an asr track in a
  * target language wins; otherwise the first manual track in the user's language order.
  * Manual tracks beat asr in the same language. Chinese prefers simplified.
+ * When the site knows the spoken language (Netflix: the audio track playing), only that language counts:
+ * Netflix offers subtitles in many languages, and a card needs the audio to match the sentence.
  * @param {Track[]} tracks
  * @param {string[]} targets ["ja", "zh", "it"]
+ * @param {string} [spokenLang]
  * @returns {Track | null}
  */
-export function pickTargetTrack(tracks, targets) {
+export function pickTargetTrack(tracks, targets, spokenLang = "") {
   const inTarget = tracks.filter((t) => targets.includes(baseLang(t.languageCode)));
   if (!inTarget.length) return null;
   const spoken = inTarget.find((t) => t.kind === "asr");
-  const lang = spoken ? baseLang(spoken.languageCode) : targets.find((l) => inTarget.some((t) => baseLang(t.languageCode) === l));
+  const lang = spokenLang
+    ? baseLang(spokenLang)
+    : spoken
+      ? baseLang(spoken.languageCode)
+      : targets.find((l) => inTarget.some((t) => baseLang(t.languageCode) === l));
   const sameLang = inTarget.filter((t) => baseLang(t.languageCode) === lang);
   const score = (/** @type {Track} */ t) =>
-    (t.kind === "asr" ? 0 : 10) + (/^zh-(hans|cn|sg)$/i.test(t.languageCode) ? 2 : 0) + (t.languageCode === lang ? 1 : 0);
-  return sameLang.sort((a, b) => score(b) - score(a))[0];
+    (t.image ? -20 : 0) + (t.kind === "asr" ? 0 : 10) + (/^zh-(hans|cn|sg)$/i.test(t.languageCode) ? 2 : 0) + (t.languageCode === lang ? 1 : 0);
+  return sameLang.sort((a, b) => score(b) - score(a))[0] ?? null;
 }
 
 /**

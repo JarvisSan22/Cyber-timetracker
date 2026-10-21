@@ -76,6 +76,26 @@ function action(buttonId, resultId, busyText, run) {
   });
 }
 
+// --- Netflix pictures: tab screenshots need <all_urls> (or a fresh activeTab grant) ---
+
+const ALL_SITES = { origins: ["<all_urls>"] };
+
+async function showScreenshotAccess() {
+  const granted = await chrome.permissions.contains(ALL_SITES);
+  result("screenshot-result", granted ? "ok" : "", granted ? "Allowed: Netflix cards get a picture." : "Not allowed: Netflix pictures only right after Alt+M or the toolbar icon.");
+}
+showScreenshotAccess();
+
+// request() straight from the click, with no await before it (user gesture).
+action("screenshot-allow", "screenshot-result", "Waiting for Chrome…", async () => {
+  if (!(await chrome.permissions.request(ALL_SITES))) throw new Error("Not granted.");
+  return "Allowed: Netflix cards get a picture.";
+});
+action("screenshot-remove", "screenshot-result", "Removing…", async () => {
+  await chrome.permissions.remove(ALL_SITES);
+  return "Removed: Netflix pictures only right after Alt+M or the toolbar icon.";
+});
+
 /** AnkiConnect on a non-default address needs its own host permission. */
 async function allowAnki() {
   if (settings.anki.url !== DEFAULTS.anki.url && !settings.anki.url.startsWith("http://localhost:8765")) await allowOrigin(settings.anki.url);

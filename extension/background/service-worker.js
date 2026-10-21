@@ -8,6 +8,7 @@ import { loadSettings, LANGUAGES } from "../shared/settings.js";
 import { buildNote, localDate } from "../shared/card.js";
 import { loadPresets, resolveTheme } from "../shared/theme.js";
 import { createWatchService } from "./watch.js";
+import { captureTabFrame } from "./capture.js";
 
 const watch = createWatchService({ tracker, storage: chrome.storage.local, loadSettings });
 const IGNORED_KEY = "ignoredTabs"; // storage.session: tabs the user switched off in the popup
@@ -213,6 +214,12 @@ const handlers = {
     const reply = await chrome.runtime.sendMessage({ target: "offscreen", type: "encode-mp3", data: msg.data, kbps: msg.kbps });
     if (!reply || reply.error) throw new Error(reply?.error ?? "Encoder did not answer");
     return reply.result;
+  },
+
+  async [MSG.CAPTURE_FRAME](msg, sender) {
+    const windowId = sender.tab?.windowId;
+    if (windowId === undefined) throw new Error("No tab to capture");
+    return captureTabFrame({ windowId, rect: msg.rect, viewportWidth: msg.viewportWidth, width: msg.width, quality: msg.quality });
   },
 
   async [MSG.MINE_CARD](msg, sender) {

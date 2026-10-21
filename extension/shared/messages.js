@@ -10,6 +10,7 @@ export const MSG = /** @type {const} */ ({
   TRACKER_TEST: "tracker-test", // -> {ok, theme}
   THEME_REFRESH: "theme-refresh", // fetch tracker theme into the cache -> Theme | null
   ENCODE_MP3: "encode-mp3", // {data: base64 webm, kbps} -> {data: base64 mp3, ext, seconds}
+  CAPTURE_FRAME: "capture-frame", // content -> worker: {rect, viewportWidth, width, quality} -> {data, ext} | null (tab screenshot, cropped)
   MINE_CARD: "mine-card", // {draft, allowDuplicate} -> {noteId, today} | {duplicate} | {queued, pending}
   OPEN_NOTE: "open-note", // {noteId}
   PENDING_RETRY: "pending-retry", // -> {sent, left}
