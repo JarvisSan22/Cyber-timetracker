@@ -451,11 +451,50 @@ Decided 2026-10-21 (audio and picture changed during the build, see DECISIONS: C
 
 Done when: card + watch session from a Netflix episode, and autoplay to the next episode starts a new session.
 
-**M5 · Transcript** (dictionaries moved to M2b)
+**M5 · Transcript** (planned 2026-10-22; dictionaries moved to M2b)
 
-1. Side bar transcript under the card: all lines, current one highlighted, click to seek, ⌬ per line.
+Every subtitle line of the video in the side panel, following the video, so you can read ahead or back, jump to a line and mine any line, with the known-word colours from M3b. Works the same on YouTube and Netflix: it only uses what the content script already has (`state.primary`, `state.translation`).
 
-Done when: the transcript follows the video and mining from it fills the card.
+Side panel layout: two tabs at the top, **Card** and **Transcript**. With no card in progress the panel opens on Transcript; mining switches to Card, and Send or Discard goes back to Transcript.
+
+Data flow:
+
+```mermaid
+flowchart LR
+    content["content/app.js<br/>cues + playback"] -- "TRANSCRIPT_SET (cues, lang, title)" --> worker["service worker<br/>storage.session transcript:&lt;tabId&gt;"]
+    worker -- "storage.onChanged" --> panel["side panel<br/>Transcript tab"]
+    panel -- "port 'transcript': seek / mine / follow" --> content
+    content -- "port: position {index, playing}" --> panel
+```
+
+- **Lines** go through the worker into `storage.session` (`transcript:<tabId>`: video id, title, lang, cues with start/end/text, translation text per line), like drafts, because content scripts cannot use `storage.session`. A few hundred lines are well under its 10 MB. Cleared on a new video and when the tab closes.
+- **Position** goes over a direct port (`chrome.tabs.connect(tabId, {name: "transcript"})` from the panel), sent only when the current line index or play state changes, so nothing is written to storage every 100 ms.
+- **Commands** from the panel over the same port: `seek {index}` (to the line's start, keeps playing or paused as it was), `mine {index}` (seek there, pause, mine that line: same flow as ⌬, panel switches to Card).
+
+Steps:
+
+1. **M5a, content and worker**
+   - `shared/transcript.js` (new, pure, tested): `transcriptRows(primary, translation, lang)` → `[{i, start_ms, end_ms, text, sentence, translation}]` (translation per line with `overlappingText`), and `lineAt(rows, ms)` (reuses `cueIndexAt`).
+   - `content/app.js`: after `onPrimary`/`onTranslation`, send `TRANSCRIPT_SET`. `setupVideo` sends `TRANSCRIPT_CLEAR`. `chrome.runtime.onConnect` for the `transcript` port. `tick` posts the line index when it changes. `mine()` gets an optional `cueIndex` (today it always takes the line at the playhead).
+   - `background/service-worker.js`: `TRANSCRIPT_SET` / `TRANSCRIPT_CLEAR` handlers write/remove `transcript:<tabId>`; tab close removes it too (next to the draft).
+   - `shared/messages.js`: the two message names and the port name.
+2. **M5b, the Transcript tab**
+   - `sidepanel/sidepanel.html`: tab bar (Card | Transcript) and a `#transcript` section: a header with the title and line count, a list, and a "Follow video" toggle.
+   - `sidepanel/transcript.js` (new module, the panel's main file only switches tabs):
+     - Rows: time (`12:41`), the line in the target language, the translation under it (blurred, shown or hidden by the same Options setting as the bar), and ⌬ on hover.
+     - The current line is highlighted, and the list scrolls to keep it in view while "Follow" is on. Scrolling by hand turns Follow off until you press it again.
+     - Click a line to seek there; ⌬ to mine it.
+     - The list is rendered once per video, and only the highlight moves on each position update.
+   - `sidepanel/sidepanel.css`: tabs, rows, highlight in the tracker style (accent border on the current line).
+   - Netflix: mining from the panel needs the tab audio to be shared already (Chrome only shows "Share this tab" after a click in the page). If it is not, the Card tab says "click ⌬ on the video once to share this tab's audio".
+3. **M5c, known words in the transcript**
+   - Each row's words are coloured like the bar (same `markWords`, same colour settings), done in the panel itself (it has the dictionaries and `knownWords`), only for rows near the visible area (IntersectionObserver) and cached per line.
+   - A small "3 new" count per row (words not in Anki), and a filter toggle **"Lines with new words"** to show only those, to find good lines to mine quickly.
+4. **M5d, tests and docs**
+   - `tests/transcript.test.js` for `transcriptRows` / `lineAt` with the json3 and Netflix fixtures.
+   - DECISIONS section, READMEs (EN/JA) feature text and a screenshot `readme-11.png` of the Transcript tab.
+
+Done when: the transcript follows the video on YouTube and Netflix, clicking a line jumps there, ⌬ on a line opens the Card tab with that line, and new words are coloured and countable per line.
 
 **M6 · Polish**
 
