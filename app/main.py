@@ -52,6 +52,23 @@ app.add_middleware(
     allow_private_network=True,  # Chrome's Local Network Access preflight (the Pi is a LAN address)
 )
 
+
+
+@app.middleware("http")
+async def block_foreign_origins(request: Request, call_next):
+    """Refuse state-changing requests sent from other web pages (CSRF).
+
+    CORS alone does not stop them: a text/plain or multipart POST is a "simple request" with no
+    preflight, so a page on any site could still trigger /api/import and replace all data.
+    """
+    origin = request.headers.get("origin")
+    if request.method not in ("GET", "HEAD", "OPTIONS") and origin:
+        own = f"{request.url.scheme}://{request.url.netloc}"
+        if origin != own and origin not in config.extension_origins():
+            return JSONResponse({"detail": "Cross-origin request refused"}, status_code=403)
+    return await call_next(request)
+
+
 app.mount("/static", StaticFiles(directory=config.APP_DIR / "static"), name="static")
 app.include_router(pages.router)
 app.include_router(htmx.router)

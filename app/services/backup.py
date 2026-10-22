@@ -3,6 +3,7 @@
 import csv
 import io
 import os
+import shutil
 import sqlite3
 import tempfile
 from datetime import datetime
@@ -105,6 +106,9 @@ def import_json(db: DBSession, data: dict) -> dict:
         raise ValueError("Not a Cyber Tracker export file")
     if data.get("version") != EXPORT_VERSION:
         raise ValueError(f"Unsupported export version: {data.get('version')}")
+    # Keep the current data next to the database, so a wrong file can be undone by hand.
+    safety = backup_copy(db)
+    shutil.move(safety, config.database_path().with_name(f"before-import-{utcnow():%Y%m%d-%H%M%S}.db"))
     try:
         for model in (MinedCard, SessionTag, Session, Tag, Idea, Project, Setting):
             db.exec(delete(model))

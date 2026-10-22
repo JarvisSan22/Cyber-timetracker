@@ -201,6 +201,21 @@ def test_ui_import_roundtrip(client, seeded):
     assert "msg-error" in client.post("/ui/import", files={"file": ("x.json", b"{}", "application/json")}).text
 
 
+def test_import_keeps_a_copy_of_the_old_data(client, seeded, tmp_path):
+    client.post("/api/import", json=client.get("/api/export").json())
+    assert len(list(tmp_path.glob("before-import-*.db"))) == 1
+
+
+def test_cross_site_posts_are_refused(client, seeded):
+    """A page on another site must not replace data with a no-preflight text/plain POST (CSRF)."""
+    data = client.get("/api/export").content
+    evil = {"Origin": "http://evil.example", "Content-Type": "text/plain"}
+    assert client.post("/api/import", content=data, headers=evil).status_code == 403
+    assert client.post("/ui/sessions/{done_id}/delete".format(**seeded), headers={"Origin": "http://evil.example"}).status_code == 403
+    assert seeded["done_id"] in sessions_in_db()
+    assert client.post("/api/import", content=data, headers={"Origin": "http://testserver"}).status_code == 200
+
+
 # --- JSON API ---
 
 
