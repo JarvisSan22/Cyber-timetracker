@@ -11,7 +11,7 @@ export const MSG = /** @type {const} */ ({
   THEME_REFRESH: "theme-refresh", // fetch tracker theme into the cache -> Theme | null
   ENCODE_MP3: "encode-mp3", // {data: base64 webm, kbps} -> {data: base64 mp3, ext, seconds}
   CAPTURE_FRAME: "capture-frame", // content -> worker: {rect, viewportWidth, width, quality} -> {data, ext} | null (tab screenshot, cropped)
-  MINE_CARD: "mine-card", // {draft, allowDuplicate} -> {noteId, today} | {duplicate} | {queued, pending}
+  MINE_CARD: "mine-card", // {draft, allowDuplicate} -> {noteId, today, lang} (today: that language's cards today) | {duplicate} | {queued, pending}
   OPEN_NOTE: "open-note", // {noteId}
   PENDING_RETRY: "pending-retry", // -> {sent, left}
   COMMAND: "command", // worker -> content script: {command} from a hotkey
@@ -30,6 +30,11 @@ export const MSG = /** @type {const} */ ({
   WATCH_IGNORE: "watch-ignore", // popup -> worker: {tabId, ignore}
   TRACKER_PROJECTS: "tracker-projects", // options -> worker: -> projects
   TRACKER_CREATE_PROJECT: "tracker-create-project", // options -> worker: {name} -> project
+  // Known words (M3b)
+  KNOWN_REFRESH: "known-refresh", // options -> worker: rebuild from Anki -> {cards, words: {lang: count}, builtAt}
+  KNOWN_MARKS: "known-marks", // content -> worker: {lang, sentence} -> WordMark[] | null
+  KNOWN_DECKS: "known-decks", // options -> worker: -> deck names
+  KNOWN_FIELDS: "known-fields", // options -> worker: {deck} -> field names
 });
 
 /** storage.session key of a tab's draft. */

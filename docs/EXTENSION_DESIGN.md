@@ -428,7 +428,7 @@ Done when: Alt+M opens the side bar beside the video; clicking 食べられな�
 
 Done when: you mine a real card from a Japanese, a Chinese and an Italian YouTube video, with MP3 and picture, on both Linux and Windows.
 
-**M3 · Watch time and card counts** (built; see DECISIONS)
+**M3 · Watch time and card counts** (done 2026-10-22; see DECISIONS)
 
 1. Playback events (10 s threshold, pause, ads, end, navigation, tab close, 10 min idle).
 2. `tracker.js`: options URL + optional permission, test button, language → project mapping, "Create missing projects", watch tags.
@@ -438,9 +438,11 @@ Done when: you mine a real card from a Japanese, a Chinese and an Italian YouTub
 
 Done when: an hour of Japanese YouTube shows as one session under Japanese with Watching + YouTube tags, and cards mined appear in "Cards mined".
 
-**M4 · Netflix**
+**M3b · Known words from Anki** (done 2026-10-22, built after M4 was planned; see DECISIONS): words in the bar coloured by their Anki status from chosen decks and fields, side panel badge with an "Already mined" warning, colours set per status in Options.
 
-Decided 2026-10-21: tab audio is started once per Netflix tab (Alt+M or the toolbar icon), then ⌬ in the bar works too; Japanese ruby is dropped from the Sentence (our furigana stays on the target word); Linux and Windows both supported (black frames on Windows leave Picture empty); loading a subtitle file by hand moves to M6.
+**M4 · Netflix** (done 2026-10-22; see DECISIONS)
+
+Decided 2026-10-21 (audio and picture changed during the build, see DECISIONS: Chrome's "Share this tab" prompt once per tab, and tab screenshots with the optional all-sites permission); Japanese ruby is dropped from the Sentence (our furigana stays on the target word); Linux and Windows both supported (black frames on Windows leave Picture empty); loading a subtitle file by hand moves to M6.
 
 1. M4a, adapter refactor with no change on YouTube (built; see DECISIONS): `content/sites/index.js` defines the adapter and picks it by hostname; YouTube subtitle loading moved from `app.js` into `youtube.js` behind `subtitles(video, target, {…callbacks})`; `seek()` (awaited by the recorder), `controlsHidden()`, `onNavigate()` on the adapter; `page-hook.js` keeps the shared plumbing and fetch/XHR copy, player commands moved to `content/hooks/youtube.js`. Test YouTube, commit.
 2. M4b, subtitles (built; see DECISIONS): hook copies the player manifest (`timedtexttracks`) and `/metadata`; `netflix.js` downloads target + English tracks (`imsc1.1`, `dfxp-ls-sdh` or `webvtt-lssdh-ios8`); `parseTtml` (tick timebase, `<br>`, ruby removed) and `parseVtt` with node fixtures; native `.player-timedtext` hidden.

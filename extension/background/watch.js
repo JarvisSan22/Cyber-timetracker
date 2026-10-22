@@ -26,7 +26,8 @@
 /**
  * @typedef {{kind: "finish", sessionId: number, ended_at: string, paused_sec: number}
  *   | {kind: "past", body: {project_id: number, title: string, started_at: string, ended_at: string, note: string}, tags: string[], paused_sec: number}
- *   | {kind: "card", body: object}} QueueItem
+ *   | {kind: "card", body: object}
+ *   | {kind: "tags", sessionId: number, projectId: number, tags: string[]}} QueueItem
  */
 
 const RECORDS = "watch"; // {[tabId]: WatchRecord}
@@ -227,6 +228,9 @@ export function createWatchService({ tracker, storage, loadSettings, now = () =>
       const tagIds = await tracker.tagIds(url, item.body.project_id, item.tags);
       const s = await tracker.addPastSession(url, { ...item.body, tag_ids: tagIds });
       if (item.paused_sec) await tracker.patchSession(url, s.id, { paused_sec: item.paused_sec });
+    } else if (item.kind === "tags") {
+      // The tracker replaces a session's tags with the list sent, so the whole list goes.
+      await tracker.patchSession(url, item.sessionId, { tag_ids: await tracker.tagIds(url, item.projectId, item.tags) });
     } else {
       await tracker.postCard(url, item.body).catch(async (e) => {
         // The session it belonged to is gone: count the card without it.
@@ -246,7 +250,15 @@ export function createWatchService({ tracker, storage, loadSettings, now = () =>
     const settings = await loadSettings();
     const projectId = /** @type {any} */ (settings.tracker.projects)[draft.lang] ?? 0;
     if (!settings.tracker.countCards || !settings.tracker.url || !projectId) return;
-    const r = tabId === null ? null : (await records())[tabId];
+    const all = await records();
+    const r = tabId === null ? null : all[tabId];
+    // Mining during a watch session: the session gets the mining tag too (once).
+    const miningTag = settings.tracker.miningTag.trim();
+    if (r && miningTag && !r.tags.some((t) => t.toLowerCase() === miningTag.toLowerCase())) {
+      r.tags = [...r.tags, miningTag];
+      await saveRecords(all); // a session still offline gets it when it is sent as a past session
+      if (r.sessionId) await enqueue({ kind: "tags", sessionId: r.sessionId, projectId: r.projectId, tags: r.tags });
+    }
     await enqueue({
       kind: "card",
       body: {

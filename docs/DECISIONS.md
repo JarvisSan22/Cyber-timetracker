@@ -209,3 +209,23 @@ Groundwork for Netflix with no change in behaviour on YouTube.
 - A slider to retake the picture at another moment of the clip was tried and taken out again (it broke the pictures); the picture is taken when mining, as before.
 
 - **Audio player** in the app's style instead of Chrome's `<audio controls>`: ⌬-yellow play/pause button with a cut corner, a gradient progress bar (click to jump), mono time readout; Space plays/pauses outside text fields. Theme tokens only, so it follows the tracker theme.
+
+## Cyber Miner M3b: known words from Anki
+
+- **Sources**: the Cyber Miner decks' Word field always counts; other decks are added in Options > Known words as deck + field + language (field names read from up to 50 notes of the deck). The worker reads every card with `findCards` + `cardsInfo` (500 per call) and keeps one entry per word: status, interval, deck. The best card wins (known > learning > new, then the longer interval).
+- **Status**: new (card not studied, type 0), learning (interval under the threshold), known (interval at least `known.matureDays`, default 21 = Anki's "mature"). "Unknown" = in none of the decks.
+- **Field text to words**: HTML, `[sound:…]`, Anki furigana `食[た]べる` and bracketed notes are removed; commas, slashes, 、 and line breaks split several words. Italian is lower-cased.
+- **The list** lives in `storage.local` (`knownWords`). It is rebuilt when older than an hour (5-minute alarm, browser start, install), on first use, and by "Refresh from Anki"; a mined card's word is added as "new" at once. One rebuild at a time.
+- **Bar colours**: the worker (which has the extension's IndexedDB) splits each line the way a click does: the dictionary's longest match at each position, inflected forms matched by their dictionary form. Grammar words stay uncoloured (Japanese particles, auxiliaries, copula, single hiragana; Italian articles, prepositions, pronouns and words of 1–2 letters; a short list of Chinese function characters), and so does text the dictionary does not know. Default look: unknown = accent colour, new or learning = dotted underline, known = plain. Each of the three can be set in Options to no colour, a theme colour (accent, second accent, warning, red, dimmed) or an underline, e.g. colour only the known words while a new deck makes almost everything unknown. The choice goes to the overlay as CSS variables (`--w-<status>-color/-deco`), so it follows the theme. Marks are cached per sentence; the next two lines are asked for ahead.
+- **Side panel badge** under Target word: "New word · not in your Anki decks", "Learning · 5 d · deck", "Known · 45 d · deck", or, when the card is in a Cyber Miner deck, "Already mined in Mining::Japanese" in the warning colour. Sending is never blocked (Anki's own duplicate check on the sentence stays).
+- **Mining tag**: the first card mined during a watch session adds the tag from Options (`tracker.miningTag`, default "Mining") to that session: a queued PATCH with the whole tag list, because the tracker replaces a session's tags. A session still offline gets it when it is sent as a past session.
+- **Tracker projects** are now matched by name when a language has none: Japanese / 日本語, Chinese / 中文 / 中国語, Italian / Italiano. Before, a project named 日本語 was not found and nothing was logged.
+
+## Cyber Miner M4d (part): Netflix audio language
+
+- The audio language is asked from Netflix's player for up to 5 s (it picks its track a moment after the manifest arrives) and only trusted when the manifest lists that language for the video; otherwise the original audio. The console says which ("audio ja (player)").
+- Every 3 s the player's audio language is checked again; picking another audio track in Netflix's menu sets up the video again, so the target subtitles follow without a reload.
+
+## Cyber Miner: cards today per language
+
+- The extension's own "cards today" count (toast and popup) is kept per day **and language** (`minedCounts[day] = {ja: 5, it: 20}`), not one number for all languages. The toast says "Card mined · 20 Italian today"; the popup lists each language mined today. A day saved by an older version (one number) starts again from 0. The tracker's "Cards mined" was already per project.

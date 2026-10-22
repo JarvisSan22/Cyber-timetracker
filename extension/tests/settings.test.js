@@ -26,6 +26,10 @@ test("a moved subtitle bar position survives the merge; null means the default s
   assert.equal(mergeDefaults(DEFAULTS, {}).overlay.position, null);
   assert.equal(mergeDefaults(DEFAULTS, {}).overlay.translation, "blur");
   assert.equal(mergeDefaults(DEFAULTS, { overlay: { translation: "show" } }).overlay.translation, "show");
+  // Known words: on by default, mature at 21 days, extra decks kept as stored.
+  assert.deepEqual(mergeDefaults(DEFAULTS, {}).known, { enabled: true, sources: [], matureDays: 21, colors: { unknown: "accent", learning: "underline", known: "none" } });
+  const src = [{ deck: "Core 2k", field: "Expression", lang: "ja" }];
+  assert.deepEqual(mergeDefaults(DEFAULTS, { known: { sources: src } }).known.sources, src);
 });
 
 test("dotted paths", () => {

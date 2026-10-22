@@ -1,6 +1,6 @@
 // @ts-check
 import { ask, MSG } from "../shared/messages.js";
-import { loadSettings, saveSettings } from "../shared/settings.js";
+import { LANGUAGES, loadSettings, saveSettings } from "../shared/settings.js";
 import { applyTheme } from "../shared/theme.js";
 import { BRAND_SVG } from "../shared/brand.js";
 
@@ -30,7 +30,11 @@ function refresh() {
   return ask(MSG.STATUS).then((st) => {
     show("anki", st.anki, `Connected · AnkiConnect v${st.anki.version}`);
     show("tracker", st.tracker, "Connected");
-    $("today").textContent = String(st.today);
+    // Per language, e.g. "Italian 20 · Japanese 5".
+    const perLang = Object.entries(/** @type {Record<string, number>} */ (st.today)).filter(([, n]) => n > 0);
+    $("today").textContent = perLang.length
+      ? perLang.map(([lang, n]) => `${LANGUAGES[/** @type {"ja" | "zh" | "it"} */ (lang)] ?? lang} ${n}`).join(" · ")
+      : "0";
     $("pending").hidden = !st.pending;
     $("pending-count").textContent = `${st.pending} card${st.pending === 1 ? "" : "s"}`;
   });

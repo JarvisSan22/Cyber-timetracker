@@ -5,6 +5,7 @@ import { loadSettings, saveSettings, originPattern, DEFAULTS } from "../shared/s
 import { applyTheme, loadPresets } from "../shared/theme.js";
 import { BRAND_SVG } from "../shared/brand.js";
 import { importLanguage, installed, removeLanguage } from "../shared/dictionary/db.js";
+import { WORD_STYLES } from "../shared/known.js";
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
 
@@ -16,6 +17,11 @@ $("ext-id").textContent = chrome.runtime.id;
 
 const modeSelect = /** @type {HTMLSelectElement} */ ($("theme-mode"));
 for (const [name, preset] of Object.entries(presets.themes)) modeSelect.add(new Option(preset.label, name));
+
+// Word colour choices (Known words), filled before the form is bound so the saved choice shows.
+for (const select of /** @type {NodeListOf<HTMLSelectElement>} */ (document.querySelectorAll("select[data-word-styles]"))) {
+  for (const [key, style] of Object.entries(WORD_STYLES)) select.add(new Option(style.label, key));
+}
 
 let savedTimer = 0;
 bindForm(document, settings, async (path) => {
@@ -217,6 +223,12 @@ renderDicts();
 // --- Tracker projects per language ---
 
 const PROJECT_NAMES = { ja: "Japanese", zh: "Chinese", it: "Italian" };
+/** Project names that mean the language, for picking an existing project automatically. */
+const PROJECT_ALIASES = {
+  ja: ["japanese", "日本語", "nihongo", "にほんご"],
+  zh: ["chinese", "中文", "中国語", "汉语", "漢語", "mandarin", "普通话"],
+  it: ["italian", "italiano", "イタリア語"],
+};
 
 async function loadProjects() {
   if (!settings.tracker.url) return;
@@ -229,6 +241,21 @@ async function loadProjects() {
   }
   const rows = $("project-rows");
   rows.replaceChildren();
+  // A language with no project yet gets the project named after it (Japanese, 日本語, …).
+  const matched = [];
+  for (const [lang, aliases] of Object.entries(PROJECT_ALIASES)) {
+    const projectsByLang = /** @type {any} */ (settings.tracker.projects);
+    if (projectsByLang[lang]) continue;
+    const match = projects.find((p) => !p.archived && aliases.includes(p.name.trim().toLowerCase()));
+    if (match) {
+      projectsByLang[lang] = match.id;
+      matched.push(`${/** @type {any} */ (PROJECT_NAMES)[lang]} → ${match.name}`);
+    }
+  }
+  if (matched.length) {
+    await saveSettings(settings);
+    result("project-result", "ok", `Picked existing projects: ${matched.join(", ")}.`);
+  }
   for (const [lang, name] of Object.entries(PROJECT_NAMES)) {
     const row = Object.assign(document.createElement("div"), { className: "project-row" });
     const label = Object.assign(document.createElement("span"), { className: "project-lang", textContent: name });
@@ -237,7 +264,7 @@ async function loadProjects() {
     select.add(new Option("— not logged —", "0"));
     for (const p of projects.filter((p) => !p.archived)) select.add(new Option(p.name, String(p.id)));
     row.append(label, select);
-    if (!projects.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+    if (!projects.some((p) => /** @type {any} */ (PROJECT_ALIASES)[lang].includes(p.name.trim().toLowerCase()))) {
       const create = Object.assign(document.createElement("button"), { type: "button", className: "secondary", textContent: `Create "${name}"` });
       create.addEventListener("click", async () => {
         create.disabled = true;
@@ -259,3 +286,101 @@ async function loadProjects() {
   fillForm(rows, settings);
 }
 loadProjects();
+
+// --- known words: extra Anki decks and the field holding the word ---
+
+/** @type {string[] | null} null: Anki not reachable */
+let ankiDecks = null;
+/** @type {Map<string, Promise<string[]>>} */
+const fieldsByDeck = new Map();
+const LANG_NAMES = { ja: "Japanese", zh: "Chinese", it: "Italian" };
+
+/** @param {string} deck */
+function fieldsOf(deck) {
+  if (!fieldsByDeck.has(deck)) fieldsByDeck.set(deck, ask(MSG.KNOWN_FIELDS, { deck }).catch(() => []));
+  return /** @type {Promise<string[]>} */ (fieldsByDeck.get(deck));
+}
+
+/**
+ * @param {HTMLSelectElement} select
+ * @param {string[]} values
+ * @param {string} current kept as an option even when not in `values` (Anki closed)
+ * @param {string} empty
+ */
+function fillSelect(select, values, current, empty) {
+  select.replaceChildren(new Option(empty, ""));
+  for (const v of new Set([...(current ? [current] : []), ...values])) select.add(new Option(v, v));
+  select.value = current;
+}
+
+async function saveKnown() {
+  await saveSettings(settings);
+  $("saved").hidden = false;
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(() => ($("saved").hidden = true), 1200);
+}
+
+function renderKnownRows() {
+  const rows = $("known-rows");
+  rows.replaceChildren();
+  if (!settings.known.sources.length) rows.append(Object.assign(document.createElement("p"), { className: "muted", textContent: "Only the Cyber Miner decks so far." }));
+  settings.known.sources.forEach((source, i) => {
+    const row = Object.assign(document.createElement("div"), { className: "project-row" });
+    const deck = document.createElement("select");
+    const field = document.createElement("select");
+    const lang = document.createElement("select");
+    const remove = Object.assign(document.createElement("button"), { type: "button", className: "secondary", textContent: "✕", title: "Remove" });
+    fillSelect(deck, ankiDecks ?? [], source.deck, "— deck —");
+    fillSelect(field, [], source.field, "— field —");
+    for (const [code, name] of Object.entries(LANG_NAMES)) lang.add(new Option(name, code));
+    lang.value = source.lang;
+    const loadFields = async () => fillSelect(field, source.deck ? await fieldsOf(source.deck) : [], source.field, "— field —");
+    loadFields();
+    deck.addEventListener("change", async () => {
+      source.deck = deck.value;
+      source.field = "";
+      await loadFields();
+      saveKnown();
+    });
+    field.addEventListener("change", () => {
+      source.field = field.value;
+      saveKnown();
+    });
+    lang.addEventListener("change", () => {
+      source.lang = lang.value;
+      saveKnown();
+    });
+    remove.addEventListener("click", () => {
+      settings.known.sources.splice(i, 1);
+      saveKnown();
+      renderKnownRows();
+    });
+    row.append(deck, field, lang, remove);
+    rows.append(row);
+  });
+}
+
+$("known-add").addEventListener("click", () => {
+  settings.known.sources.push({ deck: "", field: "", lang: settings.languages.targets[0] ?? "ja" });
+  saveKnown();
+  renderKnownRows();
+});
+
+/** @param {{cards: number, words: Record<string, number | object>, builtAt: string}} list */
+function knownSummary(list) {
+  const counts = Object.entries(list.words)
+    .map(([lang, w]) => `${/** @type {any} */ (LANG_NAMES)[lang] ?? lang} ${(typeof w === "number" ? w : Object.keys(w).length).toLocaleString()}`)
+    .join(" · ");
+  return `${list.cards.toLocaleString()} cards read · words: ${counts || "none"} · ${new Date(list.builtAt).toLocaleString()}`;
+}
+
+action("known-refresh", "known-result", "Reading your decks from Anki…", async () => knownSummary(await ask(MSG.KNOWN_REFRESH)));
+
+(async () => {
+  ankiDecks = await ask(MSG.KNOWN_DECKS).catch(() => null);
+  renderKnownRows();
+  const { knownWords } = await chrome.storage.local.get("knownWords");
+  if (knownWords) result("known-result", "ok", `Last read: ${knownSummary(knownWords)}`);
+  else if (!ankiDecks) result("known-result", "error", "Open Anki to pick decks and read your words.");
+})();
+

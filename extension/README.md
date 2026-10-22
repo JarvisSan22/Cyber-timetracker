@@ -47,10 +47,21 @@ Fields: Sentence, SentenceTranslation, Word, WordReading, WordPitch, WordDefinit
 
 ![A Cyber Sentence card in Anki](../docs/images/readme-7.png)
 
+### Known words
+Cyber Miner reads your Anki decks and colours the words of each subtitle line:
+- **Accent colour**: not in your decks, a word to learn.
+- **Dotted underline**: in Anki but not known yet.
+- **Plain**: known (card interval of 21 days or more, Anki's "mature"; the number of days is set in Options).
+
+Grammar words (particles, articles, prepositions) stay plain. The look of each status can be changed in **Options > Known words**: no colour, a theme colour or an underline. With a new deck, try "No colour" for words not in Anki and a colour for known ones.
+- **Side panel badge**: under Target word, the picked word shows "New word", "Learning · 5 d", "Known · 45 d" with its deck, or **"Already mined in Mining::Japanese"** as a warning. You can still send it.
+- **Which decks**: the Cyber Miner decks always count. Add your other vocabulary decks in **Options > Known words** (deck, the field that holds the word, language).
+- **Refreshing**: the list is read from Anki hourly while Anki is open, and on "Refresh from Anki". A card you mine counts at once.
+
 ### Netflix
 Works like YouTube:
 - **Subtitles**: Netflix lists every subtitle track for the episode; the extension downloads the target track and the English one directly. Furigana in Japanese Netflix subtitles is dropped from the sentence.
-- **Target language**: the **audio language playing** picks the subtitle track, because Netflix offers subtitles in many languages. Audio that is not ja/zh/it shows a message instead.
+- **Target language**: the **audio language playing** picks the subtitle track, because Netflix offers subtitles in many languages. Switching the audio in Netflix's menu switches the subtitles too. Audio that is not ja/zh/it shows a message instead.
 - **Seeking** uses Netflix's own player (setting the video time directly breaks it).
 - **Pictures** need **Options > Cards > "Allow Netflix pictures"** once (Chrome only allows tab screenshots with access to all sites; the extension still runs only on YouTube and Netflix).
 - **Audio** comes from Chrome's **"Share this tab"** prompt: on the first click on ⌬ or a word in a Netflix tab, allow it with "Also share tab audio" ticked. It stays shared until the tab closes or reloads.
@@ -60,7 +71,7 @@ Works like YouTube:
 
 ### Watch time in Cyber Tracker
 - A video with a ja/zh/it track starts a **watch session** in Cyber Tracker after 10 s of playback, under the project you picked for that language, with the tags "Watching, YouTube" or "Watching, Netflix".
-- The session pauses with the video and during ads; making a card counts as study time.
+- The session pauses with the video and during ads; making a card counts as study time. Mining a card adds the **Mining** tag to the session (the tag name is set in Options; empty turns it off).
 - It stops when the video ends, you leave it, or after 10 min paused.
 - **Mined cards** are counted in Cyber Tracker ("Cards mined" on the Statistics page).
 - **Tracker offline**: sessions and cards are kept and sent later.
@@ -141,12 +152,6 @@ tests/        node --test, with fixtures
 ## To do
 
 Next up:
-- **Netflix, the rest of M4**:
-  - Check that autoplay to the next episode starts a new watch session and loads its subtitles.
-  - The "Image subtitles: cannot be read" message on titles with picture subtitles only.
-  - Watch sessions under the Netflix tags.
-  - Check that the audio language picks the right track (one Japanese episode picked the Italian subtitles).
-- **Known words from Anki (M3b)**: read your existing Anki decks to mark words you already know, and show whether a word is already mined.
 - **Transcript (M5)**: all lines of the video in the side panel, the current one highlighted, click to seek, ⌬ per line.
 
 Later (M6, polish):
@@ -160,7 +165,6 @@ Later (M6, polish):
 Known limits:
 - Netflix screenshots are often black on Windows (the card goes without a picture).
 - Picture-only subtitles cannot be read (no OCR).
-- Changing the Netflix audio language needs a page reload.
 - YouTube and Netflix change their players now and then; site code is kept in the adapters so a fix stays in one place.
 
 Personal use only: no store release, no video downloading.

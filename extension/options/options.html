@@ -78,6 +78,34 @@
     </section>
 
     <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
+      <h2>Known words</h2>
+      <p class="note">Words from your Anki decks are coloured in the subtitle bar: <b>accent colour</b> = not in your decks,
+        <u>dotted underline</u> = in Anki but not known yet, plain = known (card interval at least the days below). The side
+        panel shows the picked word's status and warns when it is already mined. The Cyber Miner decks (Word field) always
+        count; add your other vocabulary decks with the field that holds the word. Needs the dictionaries above.</p>
+      <div class="check-row">
+        <label><input type="checkbox" data-field="known.enabled"> Colour words and show their status</label>
+      </div>
+      <label>Known when the card's interval is at least (days)
+        <input type="number" min="1" max="365" step="1" data-field="known.matureDays">
+      </label>
+      <h3 class="sub-head">Colours in the subtitle bar</h3>
+      <div class="lang-grid">
+        <label>Not in Anki <select data-field="known.colors.unknown" data-word-styles></select></label>
+        <label>Learning / not studied <select data-field="known.colors.learning" data-word-styles></select></label>
+        <label>Known <select data-field="known.colors.known" data-word-styles></select></label>
+      </div>
+      <small>With a new deck most words are not in Anki yet: "No colour" there and a colour for Known shows what you already know instead.</small>
+      <h3 class="sub-head">Other decks</h3>
+      <div id="known-rows" class="project-rows"></div>
+      <div class="form-actions">
+        <button type="button" id="known-add" class="secondary">Add deck</button>
+        <button type="button" id="known-refresh">Refresh from Anki</button>
+      </div>
+      <p class="result" id="known-result"></p>
+    </section>
+
+    <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
       <h2>Cards</h2>
       <div class="grid-2">
         <label>Audio padding before (ms) <input type="number" min="0" max="3000" step="50" data-field="cards.padBeforeMs"></label>
@@ -129,6 +157,9 @@
         <label>YouTube tags <input type="text" data-field="tracker.watchTags.youtube" placeholder="Watching, YouTube"></label>
         <label>Netflix tags <input type="text" data-field="tracker.watchTags.netflix" placeholder="Watching, Netflix"></label>
       </div>
+      <label>Tag added when you mine a card during the session
+        <input type="text" data-field="tracker.miningTag" placeholder="Mining (empty: none)">
+      </label>
       <small>Comma separated; created in the project if missing.</small>
       <label>Stop a session after this many minutes paused
         <input type="number" min="1" max="120" step="1" data-field="tracker.idleStopMin" style="max-width: 8rem">

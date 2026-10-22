@@ -59,6 +59,11 @@
 }
 .primary.ja, .primary.zh { font-family: "Rajdhani", var(--cjk); }
 /* Each character is a span: click one to mine with the word from there, drag to pick exactly. */
+/* Known words (Anki): the look per status is chosen in Options (--w-<status>-color/-deco on :host). */
+.primary span.w-unknown { color: var(--w-unknown-color, var(--accent)); text-decoration: var(--w-unknown-deco, none); }
+.primary span.w-learning, .primary span.w-new { color: var(--w-learning-color, inherit); text-decoration: var(--w-learning-deco, underline dotted var(--accent-2) 2px); }
+.primary span.w-known { color: var(--w-known-color, inherit); text-decoration: var(--w-known-deco, none); }
+.primary span[class^="w-"] { text-underline-offset: 0.18em; }
 .primary span:hover { color: var(--accent); text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); }
 .translation {
   font-size: clamp(12px, 1.5cqw, 24px); line-height: 1.25; color: var(--accent-2); margin-top: 0.05em; white-space: pre-line; user-select: text;

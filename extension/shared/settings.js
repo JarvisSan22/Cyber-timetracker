@@ -33,12 +33,27 @@ export const DEFAULTS = {
     projects: { ja: 0, zh: 0, it: 0 },
     // Tags put on watch sessions, comma separated, created in the project if missing.
     watchTags: { youtube: "Watching, YouTube", netflix: "Watching, Netflix" },
+    // Added to the watch session when a card is mined during it ("" = none).
+    miningTag: "Mining",
     // A watch session stops after this long paused.
     idleStopMin: 10,
   },
   theme: {
     // "tracker" follows Cyber Tracker's live theme; otherwise a preset name from shared/themes.json.
     mode: "tracker",
+  },
+  known: {
+    // Colour the words of the subtitle bar by their Anki status and show it in the side panel.
+    enabled: true,
+    // Extra Anki decks and the field holding the word ({deck, field, lang}); the Cyber Miner decks'
+    // Word field always counts.
+    /** @type {{deck: string, field: string, lang: string}[]} */
+    sources: [],
+    // A card's interval from which its word counts as known (Anki's "mature").
+    matureDays: 21,
+    // How each status looks in the bar (WORD_STYLES in shared/known.js). "learning" also covers cards
+    // not studied yet.
+    colors: { unknown: "accent", learning: "underline", known: "none" },
   },
   overlay: {
     // Where the subtitle bar was moved to: {x, y} in % of the player (shared/position.js); null = default spot.

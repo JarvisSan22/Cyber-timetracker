@@ -253,6 +253,20 @@ export function createOverlay(handlers, sheets) {
       bar.classList.toggle("empty", !text);
     },
 
+    /**
+     * Word colours by Anki status, for the line `text` (ignored when another line shows by now).
+     * @param {string} text
+     * @param {{start: number, end: number, status: string}[]} marks offsets in the mined sentence
+     */
+    setMarks(text, marks) {
+      if (primary.dataset.text !== text) return;
+      for (const span of /** @type {NodeListOf<HTMLElement>} */ (primary.querySelectorAll("span[data-i]"))) {
+        const i = Number(span.dataset.i);
+        const mark = marks.find((m) => i >= m.start && i < m.end);
+        span.className = mark ? `w-${mark.status}` : "";
+      }
+    },
+
     /** @param {"blur" | "show" | "hide"} mode */
     setTranslationMode(mode) {
       translation.hidden = mode === "hide";

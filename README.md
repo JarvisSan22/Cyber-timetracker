@@ -29,6 +29,7 @@ A Chrome extension in the same style, in [`extension/`](extension/README.md). It
 - A / D jump between lines, Alt+R replays one.
 - Hold the bar for 0.4 s to move it anywhere in the video; ⟲ puts it back.
 - Fits a small player, theater mode and fullscreen.
+- **Known words**: words are coloured by your Anki decks: not in Anki, still learning, or known (mature). The side panel warns when a word is already mined.
 
 **Card editor in the side panel**
 - **Picture**: the video frame.

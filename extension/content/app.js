@@ -7,9 +7,10 @@ import { createOverlay } from "./overlay.js";
 import { captureFrame, recordRange, playRange } from "./recorder.js";
 import { createWatcher } from "./watcher.js";
 import { pictureRect } from "../shared/frame.js";
+import { wordStyleVars } from "../shared/known.js";
 import { requestTabAudio } from "./tabaudio.js";
 import { ask, MSG } from "../shared/messages.js";
-import { loadSettings, saveSettings } from "../shared/settings.js";
+import { LANGUAGES, loadSettings, saveSettings } from "../shared/settings.js";
 import {
   baseLang, cueIndexAt, cueShowing, formatTime, joinCues, overlappingText, pickTargetTrack, sentenceText,
 } from "../shared/subtitles.js";
@@ -41,6 +42,8 @@ const state = {
   recordToken: 0,
   /** Replaying a line (Alt+R): our own play/pause, not watching. */
   replaying: false,
+  /** The line the bar's word colours were asked for (known words). */
+  markedLine: "",
 };
 
 /** @type {ReturnType<typeof createOverlay>} */
@@ -82,6 +85,7 @@ export async function start() {
   );
   overlay.host.classList.add(`site-${adapter.site}`); // default spot differs per site (control bar height)
   overlay.setPosition(state.settings.overlay.position);
+  overlay.setTheme(wordStyleVars(state.settings.known.colors));
   document.adoptedStyleSheets = [...document.adoptedStyleSheets, pageStyle, await fontSheet()];
   applyTheme();
 
@@ -105,8 +109,11 @@ export async function start() {
         }
         state.settings = s;
         overlay.setPosition(s.overlay.position);
+        overlay.setTheme(wordStyleVars(s.known.colors));
       });
     if (changes.trackerTheme) applyTheme();
+    // New known-words list (rebuilt, or a card mined) or the setting changed: colour the line again.
+    if (changes.knownWords || changes.settings) state.markedLine = "";
   });
   document.addEventListener("keydown", onKey, true);
   setInterval(tick, 100);
@@ -256,6 +263,30 @@ function tick() {
   }
   const cue = cueShowing(state.primary, video.currentTime * 1000);
   overlay.setLine(cue?.text ?? "", cue ? overlappingText(state.translation, cue) : "", state.lang);
+  const text = cue?.text ?? "";
+  if (text !== state.markedLine) {
+    state.markedLine = text;
+    if (text) markLine(text);
+  }
+}
+
+/**
+ * Colour the bar's words by their Anki status (unknown / learning / known). The worker splits the line
+ * with the dictionary; the next lines are asked for too, so they are ready when they show.
+ * @param {string} text
+ */
+function markLine(text) {
+  if (!state.settings?.known.enabled) {
+    overlay.setMarks(text, []);
+    return;
+  }
+  const lang = state.lang;
+  const ask1 = (/** @type {string} */ t) => ask(MSG.KNOWN_MARKS, { lang, sentence: sentenceText(t, lang) });
+  ask1(text)
+    .then((marks) => overlay.setMarks(text, marks ?? []))
+    .catch(() => {});
+  const i = state.primary.findIndex((c) => c.text === text);
+  for (const next of state.primary.slice(i + 1, i + 3)) ask1(next.text).catch(() => {});
 }
 
 // --- keys and commands ---
@@ -515,7 +546,7 @@ async function quickSend(mining) {
     const r = await ask(MSG.MINE_CARD, { draft: mining.draft, allowDuplicate: false });
     if (r.duplicate) overlay.showToast("Already in deck — Alt+M to send it from the side panel anyway", { error: true });
     else if (r.queued) overlay.showToast(`Anki closed · card saved (${r.pending} waiting)`, { error: true });
-    else overlay.showToast(`Card mined · ${r.today} today`, { noteId: r.noteId });
+    else overlay.showToast(`Card mined · ${r.today} ${LANGUAGES[/** @type {"ja" | "zh" | "it"} */ (r.lang)] ?? ""} today`, { noteId: r.noteId });
   } catch (e) {
     overlay.showToast(/** @type {Error} */ (e).message, { error: true });
   } finally {

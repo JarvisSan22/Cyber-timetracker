@@ -7,6 +7,8 @@ import { BRAND_SVG } from "../shared/brand.js";
 import { fallbackWordAt } from "../shared/wordpick.js";
 import { formatTimeTenths } from "../shared/subtitles.js";
 import { forgetInstalled, hasDictionary, lookupAt } from "../shared/dictionary/index.js";
+import { bestEntry } from "../shared/known.js";
+import { LANGUAGES, loadSettings } from "../shared/settings.js";
 
 const $ = (/** @type {string} */ id) => /** @type {any} */ (document.getElementById(id));
 const audioEl = /** @type {HTMLAudioElement} */ ($("audio"));
@@ -34,6 +36,8 @@ const state = {
   pitch: [],
   /** Sentence version from the content script (grows when a line is added). */
   textRev: 0,
+  /** Latest known-words badge request (older answers are dropped). */
+  badgeToken: 0,
 };
 
 $("brand-mark").innerHTML = BRAND_SVG;
@@ -96,6 +100,7 @@ function fillForm(record) {
   state.pitch = [];
   state.textRev = meta.textRev ?? 0;
   $("dup").hidden = true;
+  $("known-badge").hidden = true;
   $("error").hidden = true;
   $("lookup").hidden = true;
   $("sentence-edit").hidden = true;
@@ -306,6 +311,36 @@ async function pick(start, end) {
     $("word").value = text;
     $("reading").value = lang === "ja" ? text : "";
   }
+  showKnownBadge([text, ...(result?.entries.map((e) => e.term) ?? [])]);
+}
+
+/**
+ * Where the picked word stands in your Anki decks: new to you, learning, known, or already mined in a
+ * Cyber Miner deck (a warning only: sending still works).
+ * @param {string[]} forms what was picked and its dictionary forms
+ */
+async function showKnownBadge(forms) {
+  const badge = $("known-badge");
+  const record = state.record;
+  const token = ++state.badgeToken;
+  const [stored, settings] = await Promise.all([chrome.storage.local.get("knownWords"), loadSettings()]);
+  if (token !== state.badgeToken) return;
+  const list = stored.knownWords;
+  const wanted = forms.map((f) => f.trim()).filter(Boolean);
+  badge.hidden = !record || !settings.known.enabled || !list || !wanted.length;
+  if (badge.hidden || !record) return;
+  const lang = record.draft.lang;
+  const entry = bestEntry(list.words[lang], wanted, lang);
+  if (!entry) {
+    badge.className = "known-badge unknown";
+    badge.textContent = "New word · not in your Anki decks";
+    return;
+  }
+  const [status, days, deck] = entry;
+  const where = { known: `Known · ${days} d`, learning: `Learning · ${days} d`, new: "In Anki, not studied yet" }[status];
+  const mined = Object.values(settings.anki.decks).some((d) => deck === d || deck.startsWith(`${d}::`));
+  badge.className = `known-badge ${mined ? "mined" : status}`;
+  badge.textContent = mined ? `Already mined in ${deck} · ${where}` : `${where} · ${deck}`;
 }
 
 /**
@@ -363,10 +398,14 @@ function useEntry(entry) {
     .map((s) => s.glosses.join("; "))
     .join("\n");
   state.pitch = entry.pitch;
+  showKnownBadge([entry.term]);
 }
 
 // A word typed by hand has no pitch from the dictionary entry.
-$("word").addEventListener("input", () => (state.pitch = []));
+$("word").addEventListener("input", () => {
+  state.pitch = [];
+  showKnownBadge([$("word").value]);
+});
 
 $("edit-sentence").addEventListener("click", () => {
   const editing = $("sentence-edit").hidden;
@@ -426,7 +465,7 @@ async function send(allowDuplicate) {
       $("send").disabled = false;
       return;
     }
-    const toast = r.queued ? { text: `Anki closed · card saved (${r.pending} waiting)`, error: true } : { text: `Card mined · ${r.today} today`, noteId: r.noteId };
+    const toast = r.queued ? { text: `Anki closed · card saved (${r.pending} waiting)`, error: true } : { text: `Card mined · ${r.today} ${LANGUAGES[/** @type {"ja" | "zh" | "it"} */ (r.lang)] ?? ""} today`, noteId: r.noteId };
     chrome.tabs.sendMessage(record.tabId, { type: MSG.TOAST, ...toast }).catch(() => {});
     await ask(MSG.DRAFT_CLEAR, { tabId: record.tabId });
   } catch (e) {

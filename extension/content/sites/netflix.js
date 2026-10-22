@@ -4,13 +4,14 @@
 
 import { callPage, onCaptured } from "../bridge.js";
 import { asManifest, netflixTitle, netflixTracks, translationTrack } from "../../shared/netflix.js";
+import { baseLang } from "../../shared/subtitles.js";
 import { parseSubtitleFile } from "../../shared/subformats.js";
 import { once, sleep } from "./util.js";
 
 /** @typedef {import("../../shared/netflix.js").NetflixTrack} NetflixTrack */
 
 /** movieId -> manifest data the hook copied */
-/** @type {Map<string, {tracks: NetflixTrack[], originalAudio: string}>} */
+/** @type {Map<string, {tracks: NetflixTrack[], originalAudio: string, audioLangs: string[]}>} */
 const manifests = new Map();
 /** Copied /metadata responses, newest last. */
 /** @type {any[]} */
@@ -23,8 +24,9 @@ function handleCaptured(url, body) {
       const data = JSON.parse(body);
       const m = asManifest(data);
       if (!m) return;
-      const original = (data.audio ?? []).find((/** @type {any} */ a) => a.original)?.language ?? "";
-      manifests.set(m.movieId, { tracks: netflixTracks(m.timedtexttracks), originalAudio: original });
+      const audio = /** @type {{language: string, original: boolean}[]} */ (data.audio ?? []);
+      const original = audio.find((a) => a.original)?.language ?? "";
+      manifests.set(m.movieId, { tracks: netflixTracks(m.timedtexttracks), originalAudio: original, audioLangs: audio.map((a) => a.language) });
       console.info("[Cyber Miner] netflix manifest for", m.movieId, `${m.timedtexttracks.length} subtitle tracks`);
     } else if (url.includes("/metadata?")) {
       metadata.push(JSON.parse(body));
@@ -70,6 +72,24 @@ async function download(url, lang, role) {
 }
 
 let watchedUrl = location.pathname;
+/** Audio language the current setup used; a change (user picked another audio track) sets up again. */
+let setupAudio = "";
+
+/**
+ * Language of the audio playing. The player picks its track a moment after the manifest arrives, so this
+ * waits for an answer (up to 5 s), and only trusts a language the manifest lists for this video.
+ * @param {{originalAudio: string, audioLangs: string[]}} manifest
+ */
+async function spokenLanguage(manifest) {
+  const listed = (/** @type {string} */ l) => !manifest.audioLangs.length || manifest.audioLangs.some((a) => baseLang(a) === baseLang(l));
+  for (let i = 0; i < 20; i++) {
+    const playing = /** @type {string} */ (await callPage("audioLang").catch(() => ""));
+    if (playing && listed(playing)) return { lang: playing, from: "player" };
+    if (playing) console.info("[Cyber Miner] netflix: player audio", playing, "is not in this video's audio list", manifest.audioLangs);
+    await sleep(250);
+  }
+  return { lang: manifest.originalAudio, from: "original audio" };
+}
 
 /** @type {import("./index.js").SiteAdapter} */
 export const netflix = {
@@ -86,6 +106,16 @@ export const netflix = {
       watchedUrl = location.pathname;
       fn();
     }, 500);
+    // Another audio track picked in Netflix's menu: the target language may change with it.
+    setInterval(async () => {
+      if (!setupAudio || !netflix.isWatchPage()) return;
+      const playing = /** @type {string} */ (await callPage("audioLang").catch(() => ""));
+      if (playing && baseLang(playing) !== baseLang(setupAudio)) {
+        console.info("[Cyber Miner] netflix: audio changed to", playing);
+        setupAudio = "";
+        fn();
+      }
+    }, 3000);
   },
 
   getPlayerElement: () =>
@@ -109,8 +139,11 @@ export const netflix = {
     // /metadata usually arrives with the manifest; give it a moment.
     for (let i = 0; i < 8 && !titleFor(want); i++) await sleep(250);
     const title = titleFor(want) ?? { title: document.title.replace(/\s*[-|]\s*Netflix\s*$/i, "") || "Netflix", show: "" };
-    const playing = /** @type {string} */ (await callPage("audioLang").catch(() => ""));
-    return { videoId: want, ...title, tracks: manifest.tracks, spokenLang: playing || manifest.originalAudio };
+    const spoken = await spokenLanguage(manifest);
+    if (netflix.currentVideoId() !== want) return null;
+    console.info(`[Cyber Miner] netflix: audio ${spoken.lang || "unknown"} (${spoken.from}); audio tracks:`, manifest.audioLangs.join(", "));
+    setupAudio = spoken.lang;
+    return { videoId: want, ...title, tracks: manifest.tracks, spokenLang: spoken.lang };
   },
 
   subtitles(video, target, { lang, translationLang, onPrimary, onTranslation, onError }) {

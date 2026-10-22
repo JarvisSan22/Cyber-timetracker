@@ -160,3 +160,16 @@ test("sessions left by a closed browser end at their last heartbeat", async () =
   await service.endLeftovers();
   assert.deepEqual(w.calls.at(-1), ["patchSession", 5, { ended_at: iso(30_000), paused_sec: 0 }]);
 });
+
+test("mining during a session adds the mining tag once", async () => {
+  const { w, service } = world();
+  await service.onEvent(7, { event: "start", ...video });
+  await service.countCard(7, { lang: "ja", site: "youtube", word: "魔法" }, 1);
+  await service.countCard(7, { lang: "ja", site: "youtube", word: "勉強" }, 2);
+  const tagCalls = w.calls.filter((c) => c[0] === "tagIds").map((c) => c[2]); // [name, projectId, names]
+  assert.deepEqual(tagCalls.at(-1), ["Watching", "YouTube", "Mining"]);
+  const patches = w.calls.filter((c) => c[0] === "patchSession" && c[2].tag_ids); // [name, sessionId, patch]
+  assert.equal(patches.length, 1);
+  assert.equal(patches[0][1], 5);
+  assert.deepEqual(patches[0][2].tag_ids, [100, 101, 102]);
+});

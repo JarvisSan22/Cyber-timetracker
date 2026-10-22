@@ -54,6 +54,11 @@ body.sidebar { min-height: 100vh; }
 .lookup .empty { color: var(--muted); font-size: 0.9rem; margin: 0; }
 
 .grid-2.tight { gap: 0 0.6rem; }
+/* The picked word in your Anki decks (known words). */
+.known-badge { margin: -0.4rem 0 0.7rem; padding: 0.2rem 0.55rem; font-family: var(--font-mono); font-size: 0.8rem; background: var(--card); border-left: 3px solid var(--muted); color: var(--muted); }
+.known-badge.unknown { border-color: var(--accent); color: var(--accent); }
+.known-badge.learning, .known-badge.new { border-color: var(--accent-2); color: var(--accent-2); }
+.known-badge.mined { border-color: var(--warn); color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
 .sidebar label { font-weight: 600; }
 .sidebar label input, .sidebar label textarea { margin-top: 0.2rem; }
 .dup { padding: 0.4rem 0.6rem; border-left: 3px solid var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); margin: 0.4rem 0; }

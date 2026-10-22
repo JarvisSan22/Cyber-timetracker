@@ -9,6 +9,7 @@ import { buildNote, localDate } from "../shared/card.js";
 import { loadPresets, resolveTheme } from "../shared/theme.js";
 import { createWatchService } from "./watch.js";
 import { captureTabFrame } from "./capture.js";
+import * as known from "./known.js";
 
 const watch = createWatchService({ tracker, storage: chrome.storage.local, loadSettings });
 const IGNORED_KEY = "ignoredTabs"; // storage.session: tabs the user switched off in the popup
@@ -38,19 +39,28 @@ function ensureOffscreen() {
   return offscreenReady;
 }
 
-/** Add one to today's mined count; returns the new count. */
-async function countMined() {
+/** One day's counts per language ({ja: 5, it: 20}); before 0.9.3 a day was one number for all languages. */
+const dayCounts = (/** @type {unknown} */ day) => /** @type {Record<string, number>} */ (day && typeof day === "object" ? day : {});
+
+/**
+ * Add one to today's mined count for the card's language; returns that language's count today.
+ * @param {string} lang
+ */
+async function countMined(lang) {
   const today = localDate(new Date());
   const counts = (await chrome.storage.local.get(COUNTS_KEY))[COUNTS_KEY] ?? {};
-  // Keep two weeks; older days are in Anki (and in the tracker from M3).
+  // Keep two weeks; older days are in Anki and in the tracker.
   const kept = Object.fromEntries(Object.entries(counts).filter(([day]) => day >= localDate(new Date(Date.now() - 14 * 864e5))));
-  kept[today] = (kept[today] ?? 0) + 1;
+  const day = dayCounts(kept[today]);
+  day[lang] = (day[lang] ?? 0) + 1;
+  kept[today] = day;
   await chrome.storage.local.set({ [COUNTS_KEY]: kept });
-  return kept[today];
+  return day[lang];
 }
 
+/** Today's mined cards per language. */
 async function minedToday() {
-  return ((await chrome.storage.local.get(COUNTS_KEY))[COUNTS_KEY] ?? {})[localDate(new Date())] ?? 0;
+  return dayCounts(((await chrome.storage.local.get(COUNTS_KEY))[COUNTS_KEY] ?? {})[localDate(new Date())]);
 }
 
 /** @returns {Promise<{draft: any, queuedAt: string}[]>} */
@@ -83,7 +93,8 @@ async function sendToAnki(draft, allowDuplicate, tabId = null) {
   }
   const noteId = await anki.addNote(settings.anki, note);
   watch.countCard(tabId, draft, noteId).catch(() => {}); // never holds up the card
-  return { noteId, today: await countMined() };
+  known.addMined(draft, note.deckName).catch(() => {});
+  return { noteId, today: await countMined(draft.lang), lang: draft.lang };
 }
 
 /** @returns {Promise<import("../shared/theme.js").Theme | null>} */
@@ -222,6 +233,28 @@ const handlers = {
     return captureTabFrame({ windowId, rect: msg.rect, viewportWidth: msg.viewportWidth, width: msg.width, quality: msg.quality });
   },
 
+  async [MSG.KNOWN_REFRESH]() {
+    const list = await known.buildKnown(await loadSettings());
+    const words = Object.fromEntries(Object.entries(list.words).map(([lang, w]) => [lang, Object.keys(w).length]));
+    return { cards: list.cards, words, builtAt: list.builtAt };
+  },
+
+  async [MSG.KNOWN_MARKS](msg) {
+    const settings = await loadSettings();
+    if (!settings.known.enabled) return null;
+    // No list yet (first use): read it from Anki in the background; the bar is coloured once it is there.
+    if (!(await known.getKnown())) known.refreshIfStale(settings);
+    return known.marksFor(msg.lang, msg.sentence);
+  },
+
+  async [MSG.KNOWN_DECKS]() {
+    return anki.invoke((await loadSettings()).anki, "deckNames");
+  },
+
+  async [MSG.KNOWN_FIELDS](msg) {
+    return known.deckFields(await loadSettings(), msg.deck);
+  },
+
   async [MSG.MINE_CARD](msg, sender) {
     try {
       return await sendToAnki(msg.draft, Boolean(msg.allowDuplicate), msg.tabId ?? sender.tab?.id ?? null);
@@ -350,10 +383,14 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // Calls that failed while the tracker was unreachable are retried every 5 minutes.
 chrome.alarms.create("tracker-flush", { periodInMinutes: 5 });
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "tracker-flush") watch.flush();
+  if (alarm.name === "tracker-flush") {
+    watch.flush();
+    loadSettings().then((s) => known.refreshIfStale(s)); // known words: hourly, while Anki is open
+  }
 });
 
 chrome.runtime.onStartup.addListener(async () => {
+  loadSettings().then((s) => known.refreshIfStale(s));
   setPending(await pendingCards());
   watch.endLeftovers(); // sessions still open when the browser closed end at their last heartbeat
 });
@@ -361,5 +398,6 @@ chrome.runtime.onStartup.addListener(async () => {
 chrome.runtime.onInstalled.addListener((details) => {
   // A reload or update orphans the old content scripts: their sessions would never be stopped.
   watch.endLeftovers();
+  loadSettings().then((s) => known.refreshIfStale(s));
   if (details.reason === "install") chrome.runtime.openOptionsPage();
 });
