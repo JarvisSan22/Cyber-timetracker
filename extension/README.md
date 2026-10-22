@@ -28,7 +28,7 @@ Mining pauses the video, leaves fullscreen and opens the **side panel** next to 
 
 <p align="center"><img src="../docs/images/readme-5.png" alt="Card editor for a Japanese line: picture, audio, picked word with reading and pitch accent" width="420"></p>
 
-- **Picture**: the video frame (YouTube: drawn from the video; Netflix: a screenshot of the tab with the controls hidden, cropped to the picture).
+- **Picture**: the video frame (YouTube: drawn from the video; Netflix: a screenshot of the tab with the controls hidden, cropped to the picture). Under it, thumbnails of frames taken while the line replayed: click one to use it instead.
 - **Audio**: the line is replayed in real time and recorded, then encoded to MP3. A player in the app's style plays it back (Space plays/pauses).
 - **Clip controls**: move the start or end by 0.5 s, or take in the previous / next subtitle line ("⏮ + line", "+ line ⏭"). Each change records again. The timing readout warns when a replay stopped early.
 - **Sentence**: click a word or drag a selection; the selected word is what the card is about. ✎ Edit to fix the text.
@@ -39,6 +39,15 @@ Mining pauses the video, leaves fullscreen and opens the **side panel** next to 
   - "Use" fills Target word, Reading and Definition. Every field can be edited by hand.
 - **Send to Anki** (Ctrl+Enter). A duplicate in the deck is flagged with "Send anyway". If Anki is closed, the card waits and is sent when Anki is back.
 - **Quick mine** (**Alt+Shift+M**): sends the line straight away without the side panel.
+
+### Transcript
+The side panel's **Transcript** tab lists every subtitle line of the video, with its translation (blurred, shown or hidden like the bar).
+- **Follows the video**: the current line is highlighted and kept in view. Scrolling by hand pauses this; **⇣ Follow video** turns it back on.
+- **Click a line** to jump there; **⌬** on a line mines it and opens the Card tab.
+- **Several lines in one card**: Shift-click a second line to select everything in between (up to 10 lines), then **⌬ Mine as one card**.
+- **Word colours** like the bar, with a "3 new" count per line. **Lines with new words** shows only lines with words not in your Anki decks, to find good lines to mine.
+- The panel opens on Transcript when no card is in progress; a new card switches to Card, and sending or discarding it goes back.
+- On Netflix, mining from the panel needs the tab audio shared already (click ⌬ on the video once per tab).
 
 ### The card in Anki
 Own note type **Cyber Sentence**, one deck per language (`Mining::Japanese`, `Mining::Chinese`, `Mining::Italian`), styled like the tracker (same theme colours and fonts, pushed to Anki from Options).
@@ -152,11 +161,8 @@ tests/        node --test, with fixtures
 ## To do
 
 Next up:
-- **Transcript (M5)**: all lines of the video in the side panel, the current one highlighted, click to seek, ⌬ per line.
 
 Later (M6, polish):
-- Retake the picture at another moment of the clip (a first try was taken out again).
-- Shift-click transcript lines to merge several into one card.
 - Load a subtitle file by hand (SRT, VTT, ASS) for Netflix titles with picture subtitles.
 - Export and import the extension's settings.
 - "Report a broken site" note into the tracker's Ideas list.

@@ -9,6 +9,7 @@ import { formatTimeTenths } from "../shared/subtitles.js";
 import { forgetInstalled, hasDictionary, lookupAt } from "../shared/dictionary/index.js";
 import { bestEntry } from "../shared/known.js";
 import { LANGUAGES, loadSettings } from "../shared/settings.js";
+import { hasTranscript, initTranscript, onTranscriptShown, showTranscriptFor } from "./transcript.js";
 
 const $ = (/** @type {string} */ id) => /** @type {any} */ (document.getElementById(id));
 const audioEl = /** @type {HTMLAudioElement} */ ($("audio"));
@@ -38,6 +39,11 @@ const state = {
   textRev: 0,
   /** Latest known-words badge request (older answers are dropped). */
   badgeToken: 0,
+  /** @type {"card" | "transcript"} */
+  tab: "card",
+  /** Picture picked from the choices (null: the one taken when mining). */
+  /** @type {{data: string, ext: string} | null} */
+  chosenPicture: null,
 };
 
 $("brand-mark").innerHTML = BRAND_SVG;
@@ -50,8 +56,29 @@ const windowId = (await chrome.windows.getCurrent()).id;
 async function followActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, windowId });
   state.tabId = tab?.id ?? null;
+  await showTranscriptFor(state.tabId);
   await loadDraft();
+  showTab(state.record || !hasTranscript() ? "card" : "transcript");
 }
+
+// --- Card / Transcript tabs ---
+
+/** @param {"card" | "transcript"} tab */
+function showTab(tab) {
+  state.tab = tab;
+  for (const button of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("#tabs button"))) {
+    button.classList.toggle("active", button.dataset.tab === tab);
+  }
+  $("transcript").hidden = tab !== "transcript";
+  $("empty").hidden = tab !== "card" || Boolean(state.record);
+  $("editor").hidden = tab !== "card" || !state.record;
+  if (tab === "transcript") onTranscriptShown();
+}
+$("tabs").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  const button = /** @type {HTMLElement} */ (e.target).closest("button");
+  if (button?.dataset.tab) showTab(/** @type {"card" | "transcript"} */ (button.dataset.tab));
+});
+initTranscript({ onMine: () => showTab("card") });
 
 async function loadDraft() {
   const record = state.tabId === null ? null : (await chrome.storage.session.get(draftKey(state.tabId)))[draftKey(state.tabId)] ?? null;
@@ -73,10 +100,13 @@ await followActiveTab();
 /** @param {DraftRecord | null} record */
 function show(record) {
   const isNew = record?.draftId !== state.record?.draftId;
+  const hadRecord = Boolean(state.record);
   state.record = record;
-  $("empty").hidden = Boolean(record);
-  $("editor").hidden = !record;
   $("lang").hidden = !record;
+  // A new card opens the Card tab; sending or discarding it goes back to the transcript.
+  if (record && isNew) showTab("card");
+  else if (!record && hadRecord && hasTranscript()) showTab("transcript");
+  else showTab(state.tab);
   if (!record) return;
   if (isNew) fillForm(record);
   else if ((record.meta.textRev ?? 0) !== state.textRev) takeNewText(record);
@@ -98,6 +128,8 @@ function fillForm(record) {
   $("notes").value = draft.notes ?? "";
   $("deck").textContent = `Deck: ${meta.deck} · ${draft.source ?? ""}`;
   state.pitch = [];
+  state.chosenPicture = null;
+  $("shot-choices").dataset.key = "";
   state.textRev = meta.textRev ?? 0;
   $("dup").hidden = true;
   $("known-badge").hidden = true;
@@ -111,7 +143,9 @@ function fillForm(record) {
 /** @param {DraftRecord} record */
 function showMedia({ draft, meta }) {
   const shot = $("shot");
-  const src = draft.picture ? `data:image/jpeg;base64,${draft.picture.data}` : "";
+  const picture = state.chosenPicture ?? draft.picture;
+  const src = picture ? `data:image/jpeg;base64,${picture.data}` : "";
+  showChoices(draft);
   if (src && shot.querySelector("img")?.src !== src) {
     const img = document.createElement("img");
     img.src = src;
@@ -136,6 +170,42 @@ function showMedia({ draft, meta }) {
   const busy = meta.audio.state === "recording" || meta.audio.state === "encoding";
   $("rerecord").disabled = busy;
   $("send").disabled = busy;
+}
+
+/**
+ * Thumbnails under the picture: the mining moment and the frames grabbed while the clip replayed.
+ * Clicking one makes it the card's picture.
+ * @param {DraftRecord["draft"]} draft
+ */
+function showChoices(draft) {
+  const box = $("shot-choices");
+  /** @type {{data: string, ext: string, atMs?: number}[]} */
+  const original = Boolean(draft.picture); // first thumbnail = the picture taken when mining
+  const choices = [...(draft.picture ? [draft.picture] : []), .../** @type {any[]} */ (/** @type {any} */ (draft).pictureChoices ?? [])];
+  box.hidden = choices.length < (original ? 2 : 1);
+  if (box.hidden) return;
+  const chosen = (state.chosenPicture ?? draft.picture)?.data;
+  const key = choices.map((c) => c.data.length).join(",");
+  if (box.dataset.key !== key) {
+    box.dataset.key = key;
+    box.replaceChildren(
+      ...choices.map((choice, n) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.title = original && n === 0 ? "When you mined" : `At ${formatTimeTenths(choice.atMs ?? 0)}`;
+        const img = document.createElement("img");
+        img.src = `data:image/jpeg;base64,${choice.data}`;
+        img.alt = "";
+        button.append(img);
+        button.addEventListener("click", () => {
+          state.chosenPicture = original && n === 0 ? null : { data: choice.data, ext: choice.ext };
+          if (state.record) showMedia(state.record);
+        });
+        return button;
+      }),
+    );
+  }
+  [...box.children].forEach((button, n) => button.classList.toggle("chosen", choices[n].data === chosen));
 }
 
 /**
@@ -445,8 +515,10 @@ async function send(allowDuplicate) {
   const record = state.record;
   if (!record) return;
   if (!$("sentence-edit").hidden) $("edit-sentence").click(); // keep an unfinished edit
+  const { pictureChoices: _choices, ...recorded } = /** @type {any} */ (record.draft); // the choices are not sent
   const draft = {
-    ...record.draft,
+    ...recorded,
+    picture: state.chosenPicture ?? record.draft.picture,
     sentence: state.sentence,
     highlight: state.selection,
     word: $("word").value.trim(),

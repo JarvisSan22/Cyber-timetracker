@@ -229,3 +229,17 @@ Groundwork for Netflix with no change in behaviour on YouTube.
 ## Cyber Miner: cards today per language
 
 - The extension's own "cards today" count (toast and popup) is kept per day **and language** (`minedCounts[day] = {ja: 5, it: 20}`), not one number for all languages. The toast says "Card mined · 20 Italian today"; the popup lists each language mined today. A day saved by an older version (one number) starts again from 0. The tracker's "Cards mined" was already per project.
+
+## Cyber Miner M5: transcript
+
+- **Side panel tabs** Card and Transcript. The panel opens on Transcript when the tab has no card in progress and has lines; a new card switches to Card, Send or Discard goes back.
+- **Lines** (`shared/transcript.js` `transcriptRows`: index, start/end, the line as one sentence, the translation by overlap) are sent by the content script when the subtitles or the translation arrive (`transcript-set`), stored by the worker in `storage.session` as `transcript:<tabId>` (content scripts cannot use storage.session), removed on a new video and when the tab closes.
+- **Position and commands** over a port (`transcript`) the panel opens to the tab: the content script posts `{videoId, index, playing}` only when it changes (checked in the 100 ms tick); the panel sends `seek {index}` (to the line's start) and `mine {index}` (pause, seek 50 ms into the line, mine it; `mine()` takes `cueIndex`). A reloaded page drops the port; the panel connects again when new lines arrive.
+- **Following**: the current line is highlighted and scrolled to the middle while "Follow video" is on; a wheel or touch scroll in the list turns it off.
+- **Word colours** in the panel itself (it has the dictionaries and `knownWords`), for rows within 300 px of the screen (IntersectionObserver), one row at a time, same `markWords` and the same colour settings as the bar. Each row shows how many words are not in Anki; "Lines with new words" checks every row (progress in the header) and hides the rest.
+- **Netflix**: mining from the panel cannot show Chrome's "Share this tab" prompt (it needs a click in the page), so it works once the tab audio was shared from the video; otherwise the Card tab shows the usual message to click ⌬ on the video once.
+
+## Cyber Miner M6: several lines in one card, picture choices
+
+- **Several lines**: Shift-click in the Transcript selects from the last clicked line (or the current one) to the clicked line, at most 10 lines; "⌬ Mine as one card" (or ⌬ on a selected line) sends `mine {index, last}`. The content script joins the lines like "+ line" does (`joinCues`: sentence, translation by overlap, clip from the first start to the last end) and keeps first/last so the clip controls still work.
+- **Picture choices instead of a retake slider**: the slider that seeked the paused video to take a new picture broke pictures and was taken out. Now the frames come from the replay that records the audio anyway: `recordRange` grabs pictures at the middle of 4 equal parts of the clip while it plays (no extra seeking). Netflix's tab screenshots are limited to 2 a second, so a short clip gets fewer (one per 600 ms), and the bar and Netflix's controls stay hidden during that replay. The side panel shows them as thumbnails next to the picture taken when mining; the chosen one is sent, the others are not. Quick mine takes none.

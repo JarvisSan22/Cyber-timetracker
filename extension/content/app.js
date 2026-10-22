@@ -8,6 +8,7 @@ import { captureFrame, recordRange, playRange } from "./recorder.js";
 import { createWatcher } from "./watcher.js";
 import { pictureRect } from "../shared/frame.js";
 import { wordStyleVars } from "../shared/known.js";
+import { TRANSCRIPT_PORT, transcriptRows } from "../shared/transcript.js";
 import { requestTabAudio } from "./tabaudio.js";
 import { ask, MSG } from "../shared/messages.js";
 import { LANGUAGES, loadSettings, saveSettings } from "../shared/settings.js";
@@ -44,6 +45,8 @@ const state = {
   replaying: false,
   /** The line the bar's word colours were asked for (known words). */
   markedLine: "",
+  /** Last position sent to the side panel's transcript ("index:playing"). */
+  sentPosition: "",
 };
 
 /** @type {ReturnType<typeof createOverlay>} */
@@ -116,6 +119,7 @@ export async function start() {
     if (changes.knownWords || changes.settings) state.markedLine = "";
   });
   document.addEventListener("keydown", onKey, true);
+  chrome.runtime.onConnect.addListener(onTranscriptPort);
   setInterval(tick, 100);
   setInterval(() => watcher.tick(), 1000);
   // Leaving the site in this tab (or reloading) ends the session now, not at the next browser start.
@@ -174,6 +178,8 @@ async function setupVideo() {
   state.primary = [];
   state.translation = [];
   stopSubtitles();
+  ask(MSG.TRANSCRIPT_CLEAR).catch(() => {});
+  state.sentPosition = "";
   stopMining();
   if (!adapter.isWatchPage()) return;
 
@@ -214,16 +220,58 @@ async function setupVideo() {
       log(`${cues.length} ${state.lang} lines`);
       state.primary = cues;
       overlay.setStatus({ text: `${state.lang}${target.kind === "asr" ? " auto" : ""} · ${cues.length} lines`, flash: true });
+      publishTranscript();
     },
     onTranslation: (cues) => {
       log(`${cues.length} translation lines`);
       state.translation = cues;
+      publishTranscript();
     },
     onError: (e) => {
       log("subtitles failed:", e.message);
       overlay.setStatus({ text: e.message, flash: true });
     },
   });
+}
+
+// --- transcript in the side panel (M5) ---
+
+/** The video's lines for the side panel's Transcript tab (stored by the worker per tab). */
+function publishTranscript() {
+  const video = state.video;
+  if (!video || !state.primary.length) return;
+  const transcript = { videoId: video.videoId, title: video.title, lang: state.lang, rows: transcriptRows(state.primary, state.translation, state.lang) };
+  ask(MSG.TRANSCRIPT_SET, { transcript }).catch(() => {});
+}
+
+/** Side panels showing this tab's transcript: they get the current line, and send seek / mine. */
+/** @type {Set<chrome.runtime.Port>} */
+const transcriptPorts = new Set();
+
+/** @param {chrome.runtime.Port} port */
+function onTranscriptPort(port) {
+  if (port.name !== TRANSCRIPT_PORT) return;
+  transcriptPorts.add(port);
+  port.onDisconnect.addListener(() => transcriptPorts.delete(port));
+  port.onMessage.addListener((/** @type {{type: string, index: number, last?: number}} */ msg) => {
+    const cue = state.primary[msg.index];
+    if (!cue || !state.active) return;
+    if (msg.type === "seek") adapter.seek(cue.start_ms);
+    if (msg.type === "mine") mine({ quick: false, cueIndex: msg.index, lastIndex: msg.last });
+  });
+  state.sentPosition = ""; // the new panel gets the position at the next tick
+}
+
+/** Tell the panels which line is current, only when it or the play state changed. */
+function sendPosition() {
+  if (!transcriptPorts.size) return;
+  const video = adapter.getVideo();
+  const index = video ? currentIndex() : -1;
+  const playing = Boolean(video && !video.paused);
+  const key = `${state.video?.videoId}:${index}:${playing}`;
+  if (key === state.sentPosition) return;
+  state.sentPosition = key;
+  for (const port of transcriptPorts) port.postMessage({ type: "position", videoId: state.video?.videoId, index, playing });
 }
 
 function activate() {
@@ -263,6 +311,7 @@ function tick() {
   }
   const cue = cueShowing(state.primary, video.currentTime * 1000);
   overlay.setLine(cue?.text ?? "", cue ? overlappingText(state.translation, cue) : "", state.lang);
+  sendPosition();
   const text = cue?.text ?? "";
   if (text !== state.markedLine) {
     state.markedLine = text;
@@ -362,9 +411,11 @@ function openSidebar() {
 /**
  * Pause on the current line, take the picture, hand the draft to the worker (the side panel shows it),
  * then record the audio. Quick mine skips the side panel and sends straight away.
- * @param {{quick: boolean, pick?: {start: number, end?: number}}} options
+ * @param {{quick: boolean, pick?: {start: number, end?: number}, cueIndex?: number, lastIndex?: number}} options
+ *   cueIndex: a line picked in the transcript (else the line at the playhead); lastIndex: the last of
+ *   several lines selected there (one card for all of them)
  */
-async function mine({ quick, pick }) {
+async function mine({ quick, pick, cueIndex, lastIndex }) {
   const video = adapter.getVideo();
   const settings = state.settings;
   if (!state.active || !video || !settings || !state.video) {
@@ -376,12 +427,19 @@ async function mine({ quick, pick }) {
     overlay.showToast("Subtitles still loading", { error: true });
     return;
   }
-  const i = currentIndex();
+  // From the transcript: go to that line first (the picture is taken there).
+  if (cueIndex !== undefined) {
+    video.pause();
+    await adapter.seek(state.primary[cueIndex].start_ms + 50);
+  }
+  const i = cueIndex ?? currentIndex();
   if (i < 0) {
     overlay.showToast("No line yet", { error: true });
     return;
   }
-  const cue = state.primary[i];
+  const last = Math.min(state.primary.length - 1, Math.max(i, lastIndex ?? i));
+  // One line, or the lines selected in the transcript, as one sentence.
+  const cue = joinCues(state.primary.slice(i, last + 1), state.lang);
   const lang = /** @type {"ja" | "zh" | "it"} */ (state.lang);
   video.pause();
   // The side panel is hidden in video fullscreen.
@@ -389,7 +447,7 @@ async function mine({ quick, pick }) {
   stopMining();
   const draft = {
     lang,
-    sentence: sentenceText(cue.text, lang),
+    sentence: cue.sentence,
     translation: overlappingText(state.translation, cue),
     source: `${state.video.title} · ${formatTime(cue.start_ms)}`,
     sourceUrl: adapter.sourceUrl(state.video.videoId, cue.start_ms),
@@ -411,13 +469,13 @@ async function mine({ quick, pick }) {
       deck: settings.anki.decks[lang],
       audio: { state: "recording" },
       pick: pick ?? null,
-      lines: { start_ms: cue.start_ms, end_ms: cue.end_ms, count: 1 },
+      lines: { start_ms: cue.start_ms, end_ms: cue.end_ms, count: last - i + 1 },
       clip: { from: startMs, to: endMs },
       textRev: 0,
     };
     draftId = (await ask(MSG.DRAFT_START, { draft, meta })).draftId;
   }
-  const mining = { draftId, draft, first: i, last: i, startMs, endMs, quick, textRev: 0 };
+  const mining = { draftId, draft, first: i, last, startMs, endMs, quick, textRev: 0 };
   state.mining = mining;
   const ok = await recordAudio();
   if (quick && state.mining === mining) {
@@ -433,14 +491,37 @@ async function mine({ quick, pick }) {
  * @param {import("../shared/settings.js").Settings} settings
  */
 async function takePicture(video, settings) {
-  const { screenshotWidth: width, jpegQuality: quality } = settings.cards;
-  if (adapter.frame !== "tab") return captureFrame(video, width, quality);
-  overlay.setVisible(false);
-  pageStyle.replaceSync(`${adapter.nativeCaptionsCss}\n${adapter.cleanFrameCss ?? ""}`);
+  if (adapter.frame !== "tab") return grabFrame(video, settings);
+  cleanFrame(true);
   try {
     // Let the page repaint without them, and settle after the side panel or fullscreen exit resized it.
     await new Promise((r) => setTimeout(r, 300));
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return await grabFrame(video, settings);
+  } finally {
+    cleanFrame(false);
+  }
+}
+
+/**
+ * Tab screenshots: hide our bar and the player's controls (on) or show them again (off).
+ * @param {boolean} on
+ */
+function cleanFrame(on) {
+  overlay.setVisible(!on);
+  pageStyle.replaceSync(on ? `${adapter.nativeCaptionsCss}\n${adapter.cleanFrameCss ?? ""}` : state.active ? adapter.nativeCaptionsCss : "");
+}
+
+/**
+ * The frame on screen now, the site's way (canvas or tab screenshot), without hiding anything first.
+ * @param {HTMLVideoElement} video
+ * @param {import("../shared/settings.js").Settings} settings
+ * @returns {Promise<{data: string, ext: string} | null>}
+ */
+async function grabFrame(video, settings) {
+  const { screenshotWidth: width, jpegQuality: quality } = settings.cards;
+  if (adapter.frame !== "tab") return captureFrame(video, width, quality);
+  try {
     const box = video.getBoundingClientRect();
     const rect = pictureRect({ left: box.left, top: box.top, width: box.width, height: box.height }, video.videoWidth, video.videoHeight);
     const picture = await ask(MSG.CAPTURE_FRAME, { rect, viewportWidth: window.innerWidth, width, quality });
@@ -449,12 +530,9 @@ async function takePicture(video, settings) {
   } catch (e) {
     const message = /** @type {Error} */ (e).message;
     log("screenshot failed:", message);
-    // Chrome allows tab screenshots only after the extension was used in this tab (hotkey or toolbar icon).
+    // Chrome allows tab screenshots only with access to all sites (Options) or right after the hotkey.
     if (/activeTab/.test(message)) overlay.showToast("No picture: allow Netflix pictures in Cyber Miner's options", { error: true });
     return null;
-  } finally {
-    pageStyle.replaceSync(state.active ? adapter.nativeCaptionsCss : "");
-    overlay.setVisible(true);
   }
 }
 
@@ -475,14 +553,29 @@ async function recordAudio() {
   try {
     const audioTracks = adapter.audio === "tab" ? (await requestTabAudio()).getAudioTracks() : undefined;
     if (isCancelled()) return false;
-    const clip = await recordRange(video, mining.startMs, mining.endMs, { seek: adapter.seek, isCancelled, audioTracks });
+    // Picture choices from the replay (side bar only): 4 frames; tab screenshots are limited to 2 a
+    // second, so fewer on a short clip, and the bar and controls stay hidden while it plays.
+    const tabFrames = adapter.frame === "tab";
+    const count = mining.quick ? 0 : tabFrames ? Math.max(1, Math.min(4, Math.floor((mining.endMs - mining.startMs) / 600))) : 4;
+    const frames = count ? { count, grab: () => grabFrame(video, settings) } : undefined;
+    if (frames && tabFrames) cleanFrame(true);
+    let clip;
+    try {
+      clip = await recordRange(video, mining.startMs, mining.endMs, { seek: adapter.seek, isCancelled, audioTracks, frames });
+    } finally {
+      if (frames && tabFrames) cleanFrame(false);
+    }
     await adapter.seek(returnTo * 1000);
     update({ state: "encoding" });
     const mp3 = await ask(MSG.ENCODE_MP3, { data: clip.data, kbps: settings.cards.mp3Kbps });
     if (isCancelled()) return false;
     mining.draft.audio = { data: mp3.data, ext: "mp3" };
     // `played` is what the video really played; shorter than `wanted` means the replay was cut.
-    await update({ state: "ready", seconds: mp3.seconds }, { audio: mining.draft.audio }, { clip: { ...wanted, played: [clip.fromMs, clip.toMs] } });
+    await update(
+      { state: "ready", seconds: mp3.seconds },
+      { audio: mining.draft.audio, pictureChoices: clip.frames },
+      { clip: { ...wanted, played: [clip.fromMs, clip.toMs] } },
+    );
     return true;
   } catch (e) {
     if (isCancelled()) return false;

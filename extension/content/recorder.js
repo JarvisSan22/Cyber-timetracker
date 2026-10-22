@@ -46,11 +46,14 @@ export async function captureFrame(video, width, quality) {
  * @param {HTMLVideoElement} video
  * @param {number} startMs
  * @param {number} endMs
- * @param {{seek: (ms: number) => Promise<void>, isCancelled?: () => boolean, audioTracks?: MediaStreamTrack[]}} options
- *   audioTracks: record these (the shared tab's audio) instead of the element's own audio
- * @returns {Promise<{data: string, mime: string, fromMs: number, toMs: number}>} base64 WebM/Opus and the span actually played
+ * @param {{seek: (ms: number) => Promise<void>, isCancelled?: () => boolean, audioTracks?: MediaStreamTrack[],
+ *   frames?: {count: number, grab: () => Promise<{data: string, ext: string} | null>}}} options
+ *   audioTracks: record these (the shared tab's audio) instead of the element's own audio;
+ *   frames: also grab this many pictures, spread evenly over the clip, while it plays (picture choices)
+ * @returns {Promise<{data: string, mime: string, fromMs: number, toMs: number, frames: {data: string, ext: string, atMs: number}[]}>}
+ *   base64 WebM/Opus, the span actually played, and the pictures grabbed on the way
  */
-export async function recordRange(video, startMs, endMs, { seek, isCancelled = () => false, audioTracks }) {
+export async function recordRange(video, startMs, endMs, { seek, isCancelled = () => false, audioTracks, frames }) {
   const own = audioTracks ? null : /** @type {MediaStream} */ (/** @type {any} */ (video).captureStream());
   const audio = audioTracks ?? /** @type {MediaStream} */ (own).getAudioTracks();
   if (!audio.length) {
@@ -71,6 +74,11 @@ export async function recordRange(video, startMs, endMs, { seek, isCancelled = (
   const fromMs = video.currentTime * 1000;
   recorder.start();
   let restarts = 0;
+  // Moments for the picture choices: the middle of each of `count` equal parts of the clip.
+  const count = frames?.count ?? 0;
+  const frameTimes = Array.from({ length: count }, (_, k) => startMs + ((k + 0.5) / count) * (endMs - startMs));
+  /** @type {{data: string, ext: string, atMs: number}[]} */
+  const grabbed = [];
   try {
     await video.play().catch(() => {});
     const deadline = performance.now() + (endMs - startMs) + 8000;
@@ -78,6 +86,12 @@ export async function recordRange(video, startMs, endMs, { seek, isCancelled = (
       if (video.paused && restarts < 5) {
         restarts++;
         await video.play().catch(() => {});
+      }
+      if (frames && frameTimes.length && video.currentTime * 1000 >= frameTimes[0]) {
+        frameTimes.shift();
+        const atMs = Math.round(video.currentTime * 1000);
+        const picture = await frames.grab().catch(() => null);
+        if (picture) grabbed.push({ ...picture, atMs });
       }
       await new Promise((r) => setTimeout(r, 20));
     }
@@ -90,7 +104,7 @@ export async function recordRange(video, startMs, endMs, { seek, isCancelled = (
   await stopped;
   own?.getTracks().forEach((t) => t.stop()); // a shared tab stream stays open for the next card
   if (isCancelled()) throw new Error("Recording cancelled");
-  return { data: await blobToBase64(new Blob(chunks, { type: mime })), mime, fromMs, toMs };
+  return { data: await blobToBase64(new Blob(chunks, { type: mime })), mime, fromMs, toMs, frames: grabbed };
 }
 
 /**

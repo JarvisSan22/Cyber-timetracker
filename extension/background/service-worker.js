@@ -10,6 +10,7 @@ import { loadPresets, resolveTheme } from "../shared/theme.js";
 import { createWatchService } from "./watch.js";
 import { captureTabFrame } from "./capture.js";
 import * as known from "./known.js";
+import { transcriptKey } from "../shared/transcript.js";
 
 const watch = createWatchService({ tracker, storage: chrome.storage.local, loadSettings });
 const IGNORED_KEY = "ignoredTabs"; // storage.session: tabs the user switched off in the popup
@@ -233,6 +234,16 @@ const handlers = {
     return captureTabFrame({ windowId, rect: msg.rect, viewportWidth: msg.viewportWidth, width: msg.width, quality: msg.quality });
   },
 
+  async [MSG.TRANSCRIPT_SET](msg, sender) {
+    const tabId = sender.tab?.id;
+    if (tabId !== undefined) await chrome.storage.session.set({ [transcriptKey(tabId)]: msg.transcript });
+  },
+
+  async [MSG.TRANSCRIPT_CLEAR](_msg, sender) {
+    const tabId = sender.tab?.id;
+    if (tabId !== undefined) await chrome.storage.session.remove(transcriptKey(tabId));
+  },
+
   async [MSG.KNOWN_REFRESH]() {
     const list = await known.buildKnown(await loadSettings());
     const words = Object.fromEntries(Object.entries(list.words).map(([lang, w]) => [lang, Object.keys(w).length]));
@@ -376,7 +387,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  chrome.storage.session.remove(draftKey(tabId));
+  chrome.storage.session.remove([draftKey(tabId), transcriptKey(tabId)]);
   watch.tabClosed(tabId);
 });
 

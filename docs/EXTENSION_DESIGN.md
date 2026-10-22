@@ -451,7 +451,7 @@ Decided 2026-10-21 (audio and picture changed during the build, see DECISIONS: C
 
 Done when: card + watch session from a Netflix episode, and autoplay to the next episode starts a new session.
 
-**M5 · Transcript** (planned 2026-10-22; dictionaries moved to M2b)
+**M5 · Transcript** (planned and built 2026-10-22, M5a–c; see DECISIONS; dictionaries moved to M2b)
 
 Every subtitle line of the video in the side panel, following the video, so you can read ahead or back, jump to a line and mine any line, with the known-word colours from M3b. Works the same on YouTube and Netflix: it only uses what the content script already has (`state.primary`, `state.translation`).
 

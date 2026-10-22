@@ -30,6 +30,10 @@ export const MSG = /** @type {const} */ ({
   WATCH_IGNORE: "watch-ignore", // popup -> worker: {tabId, ignore}
   TRACKER_PROJECTS: "tracker-projects", // options -> worker: -> projects
   TRACKER_CREATE_PROJECT: "tracker-create-project", // options -> worker: {name} -> project
+  // Transcript (M5): lines go through the worker into storage.session; position and commands use a port
+  // (shared/transcript.js TRANSCRIPT_PORT) between the side panel and the tab.
+  TRANSCRIPT_SET: "transcript-set", // content -> worker: {transcript: {videoId, title, lang, rows}}
+  TRANSCRIPT_CLEAR: "transcript-clear", // content -> worker
   // Known words (M3b)
   KNOWN_REFRESH: "known-refresh", // options -> worker: rebuild from Anki -> {cards, words: {lang: count}, builtAt}
   KNOWN_MARKS: "known-marks", // content -> worker: {lang, sentence} -> WordMark[] | null

@@ -14,6 +14,29 @@
 <body class="sidebar">
   <main class="container">
     <div class="brand"><span id="brand-mark"></span><span>Cyber Miner</span><span class="badge" id="lang" hidden></span></div>
+    <nav class="tabs" id="tabs">
+      <button type="button" data-tab="card">Card</button>
+      <button type="button" data-tab="transcript">Transcript</button>
+    </nav>
+
+    <section id="transcript" hidden>
+      <div class="t-head">
+        <span class="t-title" id="t-title"></span>
+        <span class="t-count" id="t-count"></span>
+      </div>
+      <div class="t-tools">
+        <button type="button" class="secondary small-btn active" id="t-follow" aria-pressed="true" title="Keep the current line in view">⇣ Follow video</button>
+        <label class="t-filter"><input type="checkbox" id="t-new-only"> Lines with new words</label>
+      </div>
+      <div class="t-selection" id="t-selection" hidden>
+        <span id="t-sel-count"></span>
+        <button type="button" class="small-btn" id="t-sel-mine">⌬ Mine as one card</button>
+        <button type="button" class="secondary small-btn" id="t-sel-clear" title="Clear the selection">✕</button>
+      </div>
+      <p class="muted t-hint">Click a line to jump there · Shift-click to select several lines for one card</p>
+      <p class="muted t-empty" id="t-empty">No subtitles on this tab yet: open a YouTube or Netflix video with ja/zh/it subtitles.</p>
+      <ol class="t-list" id="t-list"></ol>
+    </section>
 
     <section id="empty" class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
       <p>No card in progress on this tab.</p>
@@ -22,6 +45,7 @@
 
     <section id="editor" hidden>
       <div class="shot" id="shot">Capturing…</div>
+      <div class="shot-choices" id="shot-choices" hidden title="Pictures from the replay: click one to use it"></div>
       <div class="audio-row">
         <audio id="audio" hidden></audio>
         <div class="player" id="player" hidden>

@@ -44,6 +44,11 @@ A Chrome extension in the same style, in [`extension/`](extension/README.md). It
 
 <p align="center"><img src="docs/images/readme-5.png" alt="Card editor for a Japanese line: picture, audio, picked word with reading and pitch accent" width="420"></p>
 
+**Transcript**
+- Every line of the video in the side panel's Transcript tab, following the playhead.
+- Click a line to jump there, or ⌬ to mine it.
+- Words are coloured like the bar, with a count of new words per line and a filter for lines with new words.
+
 **The card in Anki**
 - Its own **Cyber Sentence** note type, one deck per language, styled like the tracker.
 - Sentence with the word highlighted, translation, audio, picture.
