@@ -23,6 +23,14 @@ body.sidebar { min-height: 100vh; }
 .t-filter input { margin: 0; }
 .t-list { list-style: none; margin: 0; padding: 0; }
 .t-hint { font-size: 0.72rem; margin: -0.2rem 0 0.4rem; }
+.c-box { padding: 0.4rem 0.5rem; margin-bottom: 0.5rem; background: var(--card-2); border-left: 3px solid var(--accent-2); }
+.c-row { display: flex; align-items: center; gap: 0.5rem; }
+.c-row + .c-row { margin-top: 0.4rem; }
+.c-info { flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+.c-bar { flex: 1; position: relative; height: 8px; background: var(--card); overflow: hidden; }
+.c-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width 0.3s; }
+.c-status { margin: 0.4rem 0 0; font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-2); }
+.c-status.error { color: var(--danger); }
 .t-selection {
   position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.5rem; margin-bottom: 0.4rem;
   background: var(--card-2); border-left: 3px solid var(--accent-2); font-family: var(--font-mono); font-size: 0.8rem;

@@ -10,6 +10,7 @@ import { forgetInstalled, hasDictionary, lookupAt } from "../shared/dictionary/i
 import { bestEntry } from "../shared/known.js";
 import { LANGUAGES, loadSettings } from "../shared/settings.js";
 import { hasTranscript, initTranscript, onTranscriptShown, showTranscriptFor } from "./transcript.js";
+import { initCondense } from "./condense.js";
 
 const $ = (/** @type {string} */ id) => /** @type {any} */ (document.getElementById(id));
 const audioEl = /** @type {HTMLAudioElement} */ ($("audio"));
@@ -79,6 +80,7 @@ $("tabs").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   if (button?.dataset.tab) showTab(/** @type {"card" | "transcript"} */ (button.dataset.tab));
 });
 initTranscript({ onMine: () => showTab("card") });
+initCondense();
 
 async function loadDraft() {
   const record = state.tabId === null ? null : (await chrome.storage.session.get(draftKey(state.tabId)))[draftKey(state.tabId)] ?? null;

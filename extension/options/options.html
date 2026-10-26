@@ -133,6 +133,24 @@
     </section>
 
     <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
+      <h2>Condensed audio</h2>
+      <p class="note">The side panel's Transcript tab records every subtitle line of the video into one MP3 and leaves
+        out the pauses between lines. It plays the lines in real time, so it takes about as long as the MP3 will be.</p>
+      <div class="grid-2">
+        <label>Padding before each line (ms) <input type="number" min="0" max="3000" step="50" data-field="condense.padBeforeMs"></label>
+        <label>Padding after each line (ms) <input type="number" min="0" max="3000" step="50" data-field="condense.padAfterMs"></label>
+        <label>Keep pauses shorter than (ms) <input type="number" min="0" max="10000" step="100" data-field="condense.mergeGapMs"></label>
+        <label>MP3 bitrate
+          <select data-field="condense.mp3Kbps">
+            <option value="64">64 kbps</option>
+            <option value="96">96 kbps</option>
+            <option value="128">128 kbps</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
       <h2>Cyber Tracker</h2>
       <label>Tracker URL
         <input type="url" data-field="tracker.url" placeholder="http://192.168.0.50:8686">

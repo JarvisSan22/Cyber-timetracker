@@ -1,24 +1,14 @@
 // @ts-check
-/** Condensed audio (M7): record every subtitle line of the video, skip the long pauses between them,
- * and join the MP3 parts into one file. Each span is recorded like a card clip (recordRange, real time)
- * and encoded by the offscreen document, so messages stay small and a failed span is redone on its own. */
+/** Condensed audio (M7): record every subtitle line of the video and skip the long pauses between them.
+ * Each span is recorded like a card clip (recordRange, real time) and encoded by the offscreen document;
+ * the MP3 parts go to the side panel one by one, which writes them into the file the user picked. */
 
-import { condensedMs, planSpans } from "../shared/condense.js";
+import { condensedMs, MAX_SPAN_MS, planSpans } from "../shared/condense.js";
 import { recordRange } from "./recorder.js";
 
-/** A span grows no longer than this: one recording and one MP3 message each. */
-export const MAX_SPAN_MS = 60_000;
 /** A span that ended this much before its end time was cut short (page paused it, seek went wrong). */
 const SHORT_MS = 300;
 const ATTEMPTS = 3;
-
-/** @param {string} b64 */
-function base64ToBytes(b64) {
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
-}
 
 /**
  * @param {() => boolean} isAd
@@ -40,18 +30,16 @@ async function waitWhileAd(isAd, isCancelled) {
  * @param {() => boolean} options.isCancelled
  * @param {MediaStreamTrack[]} [options.audioTracks] the shared tab's audio (Netflix)
  * @param {(webm: string) => Promise<string>} options.encode base64 WebM to base64 MP3
+ * @param {(mp3: string) => void} options.onPart each span's MP3 (base64), in order; joined they make one file
  * @param {(p: {span: number, spans: number, msLeft: number}) => void} [options.onProgress]
  * @param {typeof recordRange} [options.record]
- * @returns {Promise<Blob>} one MP3
  */
-export async function condenseAudio({ video, cues, settings, seek, isAd, isCancelled, audioTracks, encode, onProgress = () => {}, record = recordRange }) {
+export async function condenseAudio({ video, cues, settings, seek, isAd, isCancelled, audioTracks, encode, onPart, onProgress = () => {}, record = recordRange }) {
   const spans = planSpans(cues, { ...settings, maxSpanMs: MAX_SPAN_MS });
   if (!spans.length) throw new Error("No subtitle lines to record");
   // Recording stops early when an ad starts, so the span is redone after it instead of keeping ad audio.
   const stop = () => isCancelled() || isAd();
   const durationMs = () => (Number.isFinite(video.duration) ? video.duration * 1000 : Infinity);
-  /** @type {Uint8Array[]} */
-  const parts = [];
   onProgress({ span: 0, spans: spans.length, msLeft: condensedMs(spans) });
   for (let i = 0; i < spans.length; i++) {
     const span = spans[i];
@@ -68,14 +56,9 @@ export async function condenseAudio({ video, cues, settings, seek, isAd, isCance
       }
     }
     if (!clip) throw new Error("Ads kept interrupting the recording");
-    parts.push(base64ToBytes(await encode(clip.data)));
+    const mp3 = await encode(clip.data);
+    if (isCancelled()) throw new Error("Recording cancelled");
+    onPart(mp3);
     onProgress({ span: i + 1, spans: spans.length, msLeft: condensedMs(spans.slice(i + 1)) });
   }
-  return new Blob(/** @type {BlobPart[]} */ (parts), { type: "audio/mpeg" });
-}
-
-/** File name for the download: the video title without characters file systems refuse. */
-export function condensedFileName(/** @type {string} */ title) {
-  const clean = title.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
-  return `${clean || "video"} (condensed).mp3`;
 }

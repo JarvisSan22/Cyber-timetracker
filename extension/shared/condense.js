@@ -1,6 +1,12 @@
 // @ts-check
 /** Condensed audio (M7): which parts of the video to record so the long pauses between lines are left out. Pure functions. */
 
+/** Port between the side panel and the tab's content script for one condensed audio recording. */
+export const CONDENSE_PORT = "condense";
+
+/** A span grows no longer than this: one recording and one MP3 message each. */
+export const MAX_SPAN_MS = 60_000;
+
 /**
  * @typedef {object} CondenseOptions
  * @property {number} padBeforeMs audio kept before each line
@@ -47,3 +53,9 @@ export function planSpans(cues, { padBeforeMs, padAfterMs, mergeGapMs, maxSpanMs
 
 /** Length of the condensed audio, which is also about how long recording takes (real time). */
 export const condensedMs = (/** @type {Span[]} */ spans) => spans.reduce((n, s) => n + s.endMs - s.startMs, 0);
+
+/** File name for the save dialog: the video title without characters file systems refuse. */
+export function condensedFileName(/** @type {string} */ title) {
+  const clean = title.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+  return `${clean || "video"} (condensed).mp3`;
+}

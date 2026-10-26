@@ -10,7 +10,8 @@ import { pictureRect } from "../shared/frame.js";
 import { wordStyleVars } from "../shared/known.js";
 import { TRANSCRIPT_PORT, transcriptRows } from "../shared/transcript.js";
 import { requestTabAudio } from "./tabaudio.js";
-import { condenseAudio, condensedFileName } from "./condense.js";
+import { condenseAudio } from "./condense.js";
+import { CONDENSE_PORT } from "../shared/condense.js";
 import { ask, MSG } from "../shared/messages.js";
 import { LANGUAGES, loadSettings, saveSettings } from "../shared/settings.js";
 import {
@@ -45,7 +46,7 @@ const state = {
   /** Replaying a line (Alt+R): our own play/pause, not watching. */
   replaying: false,
   /** Recording the condensed audio of the whole video (M7); mining and line keys wait for it. */
-  /** @type {null | {cancelled: boolean, last: object}} */
+  /** @type {null | {cancelled: boolean}} */
   condensing: null,
   /** The line the bar's word colours were asked for (known words). */
   markedLine: "",
@@ -124,6 +125,7 @@ export async function start() {
   });
   document.addEventListener("keydown", onKey, true);
   chrome.runtime.onConnect.addListener(onTranscriptPort);
+  chrome.runtime.onConnect.addListener(onCondensePort);
   setInterval(tick, 100);
   setInterval(() => watcher.tick(), 1000);
   // Leaving the site in this tab (or reloading) ends the session now, not at the next browser start.
@@ -259,14 +261,11 @@ function onTranscriptPort(port) {
   transcriptPorts.add(port);
   port.onDisconnect.addListener(() => transcriptPorts.delete(port));
   port.onMessage.addListener((/** @type {{type: string, index: number, last?: number}} */ msg) => {
-    if (msg.type === "condense") return void condense();
-    if (msg.type === "condense-cancel") return void (state.condensing && (state.condensing.cancelled = true));
     const cue = state.primary[msg.index];
     if (!cue || !state.active || busyCondensing()) return;
     if (msg.type === "seek") adapter.seek(cue.start_ms);
     if (msg.type === "mine") mine({ quick: false, cueIndex: msg.index, lastIndex: msg.last });
   });
-  if (state.condensing) port.postMessage(state.condensing.last); // a panel opened while recording
   state.sentPosition = ""; // the new panel gets the position at the next tick
 }
 
@@ -406,52 +405,66 @@ function busyCondensing() {
   return state.condensing !== null;
 }
 
-/** @param {object} msg */
-function sendCondense(msg) {
-  const full = { type: "condense", videoId: state.video?.videoId, ...msg };
-  if (state.condensing) state.condensing.last = full;
-  for (const port of transcriptPorts) port.postMessage(full);
+/**
+ * The side panel opens one port per recording: "start" begins it, "cancel" or closing the port stops it.
+ * Progress and the MP3 parts go back on the same port; the panel writes the parts into the chosen file.
+ * @param {chrome.runtime.Port} port
+ */
+function onCondensePort(port) {
+  if (port.name !== CONDENSE_PORT) return;
+  /** @type {{cancelled: boolean} | null} */
+  let job = null;
+  const post = (/** @type {object} */ msg) => {
+    try {
+      port.postMessage(msg);
+    } catch {
+      if (job) job.cancelled = true; // the panel is gone: nowhere to write the file
+    }
+  };
+  port.onDisconnect.addListener(() => job && (job.cancelled = true));
+  port.onMessage.addListener((/** @type {{type: string}} */ msg) => {
+    if (msg.type === "cancel" && job) job.cancelled = true;
+    if (msg.type === "start" && !job) {
+      job = { cancelled: false };
+      condense(job, post);
+    }
+  });
 }
 
 /**
- * Record the whole video's lines into one MP3 (long pauses left out) and download it. Started from the
- * side panel's Transcript tab; progress goes back to every open panel.
+ * Record the whole video's lines (long pauses left out) as MP3 parts for the side panel.
+ * @param {{cancelled: boolean}} job
+ * @param {(msg: object) => void} post
  */
-async function condense() {
+async function condense(job, post) {
   const video = adapter.getVideo();
   const settings = state.settings;
   const info = state.video;
-  if (state.condensing || state.mining) return sendCondense({ state: "error", message: state.mining ? "Finish or discard the card first" : "Already recording" });
-  if (!state.active || !video || !settings || !info) return sendCondense({ state: "error", message: "No ja/zh/it subtitles on this video" });
-  if (!state.primary.length) return sendCondense({ state: "error", message: "Subtitles still loading" });
-  const job = { cancelled: false, last: {} };
+  if (state.condensing) return post({ type: "error", message: "Already recording condensed audio" });
+  if (state.mining) return post({ type: "error", message: "Finish or discard the card first" });
+  if (!state.active || !video || !settings || !info) return post({ type: "error", message: "No ja/zh/it subtitles on this video" });
+  if (!state.primary.length) return post({ type: "error", message: "Subtitles still loading" });
   state.condensing = job;
   const back = { ms: video.currentTime * 1000, paused: video.paused };
-  const cues = state.primary;
   try {
     const audioTracks = adapter.audio === "tab" ? (await requestTabAudio()).getAudioTracks() : undefined;
-    const blob = await condenseAudio({
+    await condenseAudio({
       video,
-      cues,
+      cues: state.primary,
       settings: settings.condense,
       seek: adapter.seek,
       isAd: () => adapter.isAd(),
       isCancelled: () => job.cancelled,
       audioTracks,
       encode: async (data) => (await ask(MSG.ENCODE_MP3, { data, kbps: settings.condense.mp3Kbps })).data,
-      onProgress: (p) => sendCondense({ state: "recording", ...p }),
+      onPart: (data) => post({ type: "part", data }),
+      onProgress: (p) => post({ type: "progress", ...p }),
     });
-    const file = condensedFileName(info.title);
-    const url = URL.createObjectURL(blob);
-    const link = Object.assign(document.createElement("a"), { href: url, download: file });
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    sendCondense({ state: "done", file, bytes: blob.size });
-    overlay.showToast(`Saved ${file}`);
+    post({ type: "done" });
   } catch (e) {
     const message = /** @type {Error} */ (e).message;
-    log("condensed audio failed:", message);
-    sendCondense(job.cancelled ? { state: "cancelled" } : { state: "error", message });
+    if (!job.cancelled) log("condensed audio failed:", message);
+    post(job.cancelled ? { type: "cancelled" } : { type: "error", message });
   } finally {
     state.condensing = null;
     if (state.video === info) {

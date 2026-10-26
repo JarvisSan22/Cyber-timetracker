@@ -119,6 +119,20 @@ export async function showTranscriptFor(tabId) {
   if (tabId === view.tabId) setData(data);
 }
 
+/** @typedef {{tabId: number | null, data: Transcript | null, settings: import("../shared/settings.js").Settings | null}} TranscriptState */
+/** @type {((state: TranscriptState) => void)[]} */
+const listeners = [];
+
+/** Called now and whenever the tab, its lines or the settings change (condensed audio box). */
+export function onTranscriptChange(/** @type {(state: TranscriptState) => void} */ fn) {
+  listeners.push(fn);
+  fn({ tabId: view.tabId, data: view.data, settings: view.settings });
+}
+
+function notify() {
+  for (const fn of listeners) fn({ tabId: view.tabId, data: view.data, settings: view.settings });
+}
+
 export function hasTranscript() {
   return Boolean(view.data?.rows.length);
 }
@@ -134,6 +148,7 @@ function applySettings(settings) {
     el.classList.toggle("blur", mode === "blur");
   }
   if (recolourNeeded) recolour();
+  notify();
 }
 
 /** @param {Transcript | null} data */
@@ -151,6 +166,7 @@ function setData(data) {
   }
   render();
   connect(); // a reloaded page drops the port; a new video may come from a new page
+  notify();
 }
 
 function render() {

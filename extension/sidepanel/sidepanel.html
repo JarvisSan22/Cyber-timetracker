@@ -28,6 +28,17 @@
         <button type="button" class="secondary small-btn active" id="t-follow" aria-pressed="true" title="Keep the current line in view">⇣ Follow video</button>
         <label class="t-filter"><input type="checkbox" id="t-new-only"> Lines with new words</label>
       </div>
+      <div class="c-box" id="c-box" hidden>
+        <div class="c-row">
+          <button type="button" class="secondary small-btn" id="c-start" title="Every line of this video in one MP3, long pauses left out">♫ Condensed audio</button>
+          <span class="c-info" id="c-info"></span>
+        </div>
+        <div class="c-row" id="c-running" hidden>
+          <div class="c-bar"><div class="c-fill" id="c-fill"></div></div>
+          <button type="button" class="secondary small-btn" id="c-cancel">Cancel</button>
+        </div>
+        <p class="c-status" id="c-status" hidden></p>
+      </div>
       <div class="t-selection" id="t-selection" hidden>
         <span id="t-sel-count"></span>
         <button type="button" class="small-btn" id="t-sel-mine">⌬ Mine as one card</button>

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { condenseAudio, condensedFileName } from "../content/condense.js";
+import { condenseAudio } from "../content/condense.js";
+import { condensedFileName } from "../shared/condense.js";
 
 const settings = { padBeforeMs: 0, padAfterMs: 0, mergeGapMs: 1500 };
 const cues = [
@@ -22,8 +23,10 @@ function fakes(plan = []) {
   return { calls, record };
 }
 
-const run = (extra) =>
-  condenseAudio({
+/** Runs the recording; resolves to the joined parts as text (the fake MP3 of a span is "[start]"). */
+const run = async (extra) => {
+  const parts = [];
+  await condenseAudio({
     video: { duration: 30 },
     cues,
     settings,
@@ -31,16 +34,18 @@ const run = (extra) =>
     isAd: () => false,
     isCancelled: () => false,
     encode: async (data) => b64(`[${Buffer.from(data, "base64")}]`),
+    onPart: (mp3) => parts.push(Buffer.from(mp3, "base64").toString()),
     ...extra,
   });
+  return parts.join("");
+};
 
-test("condenseAudio: one recording per span, MP3 parts joined in order, progress", async () => {
+test("condenseAudio: one recording per span, MP3 parts in order, progress", async () => {
   const { calls, record } = fakes();
   const progress = [];
-  const blob = await run({ record, onProgress: (p) => progress.push(p) });
+  const joined = await run({ record, onProgress: (p) => progress.push(p) });
   assert.deepEqual(calls, [[1000, 2000], [10000, 11000]]);
-  assert.equal(blob.type, "audio/mpeg");
-  assert.equal(await blob.text(), "[1000][10000]");
+  assert.equal(joined, "[1000][10000]");
   assert.deepEqual(progress, [
     { span: 0, spans: 2, msLeft: 2000 },
     { span: 1, spans: 2, msLeft: 1000 },
@@ -50,7 +55,7 @@ test("condenseAudio: one recording per span, MP3 parts joined in order, progress
 
 test("condenseAudio: a span cut short is redone, and kept after the last attempt", async () => {
   const redo = fakes([{ toMs: 1200 }]);
-  assert.equal(await (await run({ record: redo.record })).text(), "[1000][10000]");
+  assert.equal(await run({ record: redo.record }), "[1000][10000]");
   assert.deepEqual(redo.calls.map((c) => c[0]), [1000, 1000, 10000]);
 
   const short = fakes([{ toMs: 1200 }, { toMs: 1200 }, { toMs: 1200 }]);
@@ -73,7 +78,7 @@ test("condenseAudio: an ad stops the span; it is recorded again after the ad", a
     if (ad && calls.length === 1) setTimeout(() => (ad = false), 10);
     return now;
   };
-  assert.equal(await (await run({ record, isAd })).text(), "[1000][10000]");
+  assert.equal(await run({ record, isAd }), "[1000][10000]");
   assert.deepEqual(calls.map((c) => c[0]), [1000, 1000, 10000]);
 });
 
