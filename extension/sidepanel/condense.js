@@ -28,6 +28,7 @@ const PICKER_ID = "cyber-miner-condensed";
 
 /** @type {Job | null} */
 let job = null;
+let flashTimer = 0;
 /** @type {TranscriptState} */
 let current = { tabId: null, data: null, settings: null };
 
@@ -136,6 +137,12 @@ function onMessage(mine, msg) {
   } else if (msg.type === "progress") {
     $("c-fill").style.width = `${(100 * msg.span) / Math.max(1, msg.spans)}%`;
     status(`Recording ${msg.span} / ${msg.spans} · ${minutes(msg.msLeft)} left · keep the video tab playing with sound`);
+  } else if (msg.type === "jumped") {
+    // The video was moved from the player: make the warning hard to miss for a few seconds.
+    const warn = $("c-warn");
+    warn.classList.add("flash");
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => warn.classList.remove("flash"), 4000);
   } else if (msg.type === "done") {
     finish(mine, "", false);
   } else if (msg.type === "cancelled") {

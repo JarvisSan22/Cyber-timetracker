@@ -33,9 +33,13 @@
           <button type="button" class="secondary small-btn" id="c-start" title="Every line of this video in one MP3, long pauses left out">♫ Condensed audio</button>
           <span class="c-info" id="c-info"></span>
         </div>
-        <div class="c-row" id="c-running" hidden>
-          <div class="c-bar"><div class="c-fill" id="c-fill"></div></div>
-          <button type="button" class="secondary small-btn" id="c-cancel">Cancel</button>
+        <div id="c-running" hidden>
+          <div class="c-row">
+            <div class="c-bar"><div class="c-fill" id="c-fill"></div></div>
+            <button type="button" class="secondary small-btn" id="c-cancel">Cancel</button>
+          </div>
+          <p class="c-warn" id="c-warn">⚠ Don't touch the video while recording: no timeline clicks, pausing or skipping.
+            A move is undone and that part is recorded again. Use Cancel to stop.</p>
         </div>
         <p class="c-status" id="c-status" hidden></p>
       </div>
