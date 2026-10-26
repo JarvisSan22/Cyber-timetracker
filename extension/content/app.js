@@ -10,6 +10,7 @@ import { pictureRect } from "../shared/frame.js";
 import { wordStyleVars } from "../shared/known.js";
 import { TRANSCRIPT_PORT, transcriptRows } from "../shared/transcript.js";
 import { requestTabAudio } from "./tabaudio.js";
+import { condenseAudio, condensedFileName } from "./condense.js";
 import { ask, MSG } from "../shared/messages.js";
 import { LANGUAGES, loadSettings, saveSettings } from "../shared/settings.js";
 import {
@@ -43,6 +44,9 @@ const state = {
   recordToken: 0,
   /** Replaying a line (Alt+R): our own play/pause, not watching. */
   replaying: false,
+  /** Recording the condensed audio of the whole video (M7); mining and line keys wait for it. */
+  /** @type {null | {cancelled: boolean, last: object}} */
+  condensing: null,
   /** The line the bar's word colours were asked for (known words). */
   markedLine: "",
   /** Last position sent to the side panel's transcript ("index:playing"). */
@@ -56,7 +60,7 @@ const watcher = createWatcher({
   getVideo: () => adapter.getVideo(),
   isAd: () => adapter.isAd(),
   // Making a card is study time too: the session keeps running while the video is paused for it.
-  isBusy: () => state.mining !== null || state.replaying,
+  isBusy: () => state.mining !== null || state.replaying || state.condensing !== null,
   idleStopMs: () => (state.settings?.tracker.idleStopMin ?? 10) * 60_000,
 });
 const pageStyle = new CSSStyleSheet();
@@ -173,6 +177,7 @@ async function setupVideo() {
   const token = ++state.setupToken;
   watcher.detach();
   deactivate();
+  if (state.condensing) state.condensing.cancelled = true;
   state.video = null;
   state.target = null;
   state.primary = [];
@@ -254,11 +259,14 @@ function onTranscriptPort(port) {
   transcriptPorts.add(port);
   port.onDisconnect.addListener(() => transcriptPorts.delete(port));
   port.onMessage.addListener((/** @type {{type: string, index: number, last?: number}} */ msg) => {
+    if (msg.type === "condense") return void condense();
+    if (msg.type === "condense-cancel") return void (state.condensing && (state.condensing.cancelled = true));
     const cue = state.primary[msg.index];
-    if (!cue || !state.active) return;
+    if (!cue || !state.active || busyCondensing()) return;
     if (msg.type === "seek") adapter.seek(cue.start_ms);
     if (msg.type === "mine") mine({ quick: false, cueIndex: msg.index, lastIndex: msg.last });
   });
+  if (state.condensing) port.postMessage(state.condensing.last); // a panel opened while recording
   state.sentPosition = ""; // the new panel gets the position at the next tick
 }
 
@@ -377,7 +385,7 @@ function currentIndex() {
 
 /** @param {number} delta */
 function stepLine(delta) {
-  if (!state.primary.length) return;
+  if (!state.primary.length || busyCondensing()) return;
   const i = Math.max(0, Math.min(state.primary.length - 1, currentIndex() + delta));
   adapter.seek(state.primary[i].start_ms);
 }
@@ -385,9 +393,72 @@ function stepLine(delta) {
 function replayLine() {
   const video = adapter.getVideo();
   const i = currentIndex();
-  if (!video || i < 0) return;
+  if (!video || i < 0 || busyCondensing()) return;
   state.replaying = true;
   playRange(video, state.primary[i].start_ms, state.primary[i].end_ms, adapter.seek).finally(() => (state.replaying = false));
+}
+
+// --- condensed audio (M7) ---
+
+/** True (and says so on the bar) while the condensed audio is recording: it owns play, pause and seek. */
+function busyCondensing() {
+  if (state.condensing) overlay?.showToast("Recording condensed audio: cancel it in the side panel first", { error: true });
+  return state.condensing !== null;
+}
+
+/** @param {object} msg */
+function sendCondense(msg) {
+  const full = { type: "condense", videoId: state.video?.videoId, ...msg };
+  if (state.condensing) state.condensing.last = full;
+  for (const port of transcriptPorts) port.postMessage(full);
+}
+
+/**
+ * Record the whole video's lines into one MP3 (long pauses left out) and download it. Started from the
+ * side panel's Transcript tab; progress goes back to every open panel.
+ */
+async function condense() {
+  const video = adapter.getVideo();
+  const settings = state.settings;
+  const info = state.video;
+  if (state.condensing || state.mining) return sendCondense({ state: "error", message: state.mining ? "Finish or discard the card first" : "Already recording" });
+  if (!state.active || !video || !settings || !info) return sendCondense({ state: "error", message: "No ja/zh/it subtitles on this video" });
+  if (!state.primary.length) return sendCondense({ state: "error", message: "Subtitles still loading" });
+  const job = { cancelled: false, last: {} };
+  state.condensing = job;
+  const back = { ms: video.currentTime * 1000, paused: video.paused };
+  const cues = state.primary;
+  try {
+    const audioTracks = adapter.audio === "tab" ? (await requestTabAudio()).getAudioTracks() : undefined;
+    const blob = await condenseAudio({
+      video,
+      cues,
+      settings: settings.condense,
+      seek: adapter.seek,
+      isAd: () => adapter.isAd(),
+      isCancelled: () => job.cancelled,
+      audioTracks,
+      encode: async (data) => (await ask(MSG.ENCODE_MP3, { data, kbps: settings.condense.mp3Kbps })).data,
+      onProgress: (p) => sendCondense({ state: "recording", ...p }),
+    });
+    const file = condensedFileName(info.title);
+    const url = URL.createObjectURL(blob);
+    const link = Object.assign(document.createElement("a"), { href: url, download: file });
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    sendCondense({ state: "done", file, bytes: blob.size });
+    overlay.showToast(`Saved ${file}`);
+  } catch (e) {
+    const message = /** @type {Error} */ (e).message;
+    log("condensed audio failed:", message);
+    sendCondense(job.cancelled ? { state: "cancelled" } : { state: "error", message });
+  } finally {
+    state.condensing = null;
+    if (state.video === info) {
+      await adapter.seek(back.ms).catch(() => {});
+      if (!back.paused) video.play().catch(() => {});
+    }
+  }
 }
 
 // --- mining ---
@@ -422,7 +493,7 @@ async function mine({ quick, pick, cueIndex, lastIndex }) {
     overlay?.showToast("No ja/zh/it subtitles on this video", { error: true });
     return;
   }
-  if (adapter.isAd()) return;
+  if (adapter.isAd() || busyCondensing()) return;
   if (!state.primary.length) {
     overlay.showToast("Subtitles still loading", { error: true });
     return;

@@ -25,6 +25,13 @@ export const DEFAULTS = {
     screenshotWidth: 720,
     jpegQuality: 0.8,
   },
+  // Condensed audio (M7): the whole video's lines in one MP3, pauses longer than mergeGapMs left out.
+  condense: {
+    padBeforeMs: 250,
+    padAfterMs: 400,
+    mergeGapMs: 1500,
+    mp3Kbps: 64,
+  },
   tracker: {
     url: "",
     logWatchTime: true,
