@@ -49,6 +49,8 @@ The side panel's **Transcript** tab lists every subtitle line of the video, with
 - The panel opens on Transcript when no card is in progress; a new card switches to Card, and sending or discarding it goes back.
 - On Netflix, mining from the panel needs the tab audio shared already (click ⌬ on the video once per tab).
 
+<p align="center"><img src="../docs/images/readme-11.png" alt="Transcript tab: current line highlighted, word colours, new-word counts, lines selected for one card" width="420"></p>
+
 ### The card in Anki
 Own note type **Cyber Sentence**, one deck per language (`Mining::Japanese`, `Mining::Chinese`, `Mining::Italian`), styled like the tracker (same theme colours and fonts, pushed to Anki from Options).
 

@@ -48,6 +48,9 @@ A Chrome extension in the same style, in [`extension/`](extension/README.md). It
 - Every line of the video in the side panel's Transcript tab, following the playhead.
 - Click a line to jump there, or ⌬ to mine it.
 - Words are coloured like the bar, with a count of new words per line and a filter for lines with new words.
+- Shift-click to select several lines and mine them as one card.
+
+<p align="center"><img src="docs/images/readme-11.png" alt="Transcript tab in the side panel" width="420"></p>
 
 **The card in Anki**
 - Its own **Cyber Sentence** note type, one deck per language, styled like the tracker.

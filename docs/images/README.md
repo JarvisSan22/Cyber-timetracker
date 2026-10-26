@@ -14,3 +14,4 @@ Screenshots used in the READMEs, named `readme-<n>.png`. Keep them about 1600 px
 | `readme-8.png` | README.md, extension/README.md, Watch time | The **toolbar popup**: Anki and tracker status, this tab, cards today |
 | `readme-9.png` | README.md, extension/README.md, Setup | The **Options** page: Anki (after Connect), Languages, Dictionaries |
 | `readme-10.png` | extension/README.md, Moving the bar | The subtitle bar **moved** to the top of the video with the ⟲ reset button showing on hover |
+| `readme-11.png` | README.md, extension/README.md, Transcript | Side panel **Transcript** tab next to the video: current line highlighted, word colours, "N new" counts, a few lines Shift-selected |

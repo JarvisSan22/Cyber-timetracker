@@ -49,6 +49,8 @@
 - カード作成中でなければパネルは Transcript で開き、新しいカードで Card に切り替わり、送るか破棄すると戻ります。
 - Netflix では、パネルからカードを作るにはタブの音声がすでに共有されている必要があります（タブごとに一度、動画の ⌬ をクリック）。
 
+<p align="center"><img src="../docs/images/readme-11.png" alt="Transcript タブ：今の行のハイライト、単語の色分け、新しい単語の数、1 枚のカード用に選んだ行" width="420"></p>
+
 ### Anki のカード
 専用のノートタイプ **Cyber Sentence** と、言語ごとのデッキ（`Mining::Japanese`、`Mining::Chinese`、`Mining::Italian`）を使います。見た目は Cyber Tracker と同じテーマ色とフォントで、オプションから Anki に送ります。
 
