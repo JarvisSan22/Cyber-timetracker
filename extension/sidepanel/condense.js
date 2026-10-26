@@ -5,7 +5,7 @@
  * written straight into the file. Cancel, an error or closing the panel removes the half-written file. */
 
 import { CONDENSE_PORT, condensedFileName, condensedMs, MAX_SPAN_MS, planSpans } from "../shared/condense.js";
-import { onTranscriptChange } from "./transcript.js";
+import { guardCommands, onTranscriptChange } from "./transcript.js";
 
 const $ = (/** @type {string} */ id) => /** @type {any} */ (document.getElementById(id));
 
@@ -17,6 +17,7 @@ const PICKER_ID = "cyber-miner-condensed";
 /**
  * @typedef {object} Job
  * @property {chrome.runtime.Port} port
+ * @property {number} tabId
  * @property {any} handle FileSystemFileHandle
  * @property {any} writable FileSystemWritableFileStream
  * @property {Promise<void>} writes the parts written so far, in order
@@ -33,6 +34,14 @@ let current = { tabId: null, data: null, settings: null };
 export function initCondense() {
   $("c-start").addEventListener("click", start);
   $("c-cancel").addEventListener("click", () => job?.port.postMessage({ type: "cancel" }));
+  // Jumping to or mining a line moves the video the recording is playing: ask first.
+  guardCommands((msg, tabId) => {
+    if (!job || job.tabId !== tabId) return true;
+    const what = msg.type === "seek" ? "jump to this line" : "mine this line";
+    if (!confirm(`Condensed audio is still recording.\n\nStop the recording and ${what}? The unfinished MP3 is deleted.`)) return false;
+    msg.stopCondense = true;
+    return true;
+  });
   onTranscriptChange((state) => {
     current = state;
     render();
@@ -99,7 +108,7 @@ async function start() {
     await writable.abort().catch(() => {});
     return status("Reload the video tab and try again", true);
   }
-  const mine = /** @type {Job} */ ({ port, handle, writable, writes: Promise.resolve(), file: handle.name, bytes: 0, over: false });
+  const mine = /** @type {Job} */ ({ port, tabId, handle, writable, writes: Promise.resolve(), file: handle.name, bytes: 0, over: false });
   job = mine;
   status("Starting…");
   $("c-fill").style.width = "0";

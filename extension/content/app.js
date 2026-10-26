@@ -21,6 +21,14 @@ import {
 const adapter = /** @type {import("./sites/index.js").SiteAdapter} */ (pickAdapter());
 
 /** @typedef {import("../shared/subtitles.js").Cue} Cue */
+/**
+ * @typedef {object} CondenseJob a condensed audio recording (M7)
+ * @property {boolean} cancelled
+ * @property {Promise<void>} [finished] resolves once it stopped and the video is back where it was
+ * @property {number} ownSeekUntil our own seek is running or just ended (any other seek is the user moving the video)
+ * @property {boolean} jumped the user moved the video; the span is redone
+ * @property {number} confirmUntil a second press before this stops the recording
+ */
 
 const state = {
   /** @type {import("../shared/settings.js").Settings | null} */
@@ -46,7 +54,7 @@ const state = {
   /** Replaying a line (Alt+R): our own play/pause, not watching. */
   replaying: false,
   /** Recording the condensed audio of the whole video (M7); mining and line keys wait for it. */
-  /** @type {null | {cancelled: boolean}} */
+  /** @type {null | CondenseJob} */
   condensing: null,
   /** The line the bar's word colours were asked for (known words). */
   markedLine: "",
@@ -260,9 +268,14 @@ function onTranscriptPort(port) {
   if (port.name !== TRANSCRIPT_PORT) return;
   transcriptPorts.add(port);
   port.onDisconnect.addListener(() => transcriptPorts.delete(port));
-  port.onMessage.addListener((/** @type {{type: string, index: number, last?: number}} */ msg) => {
+  port.onMessage.addListener(async (/** @type {{type: string, index: number, last?: number, stopCondense?: boolean}} */ msg) => {
+    // The panel asked "stop the condensed audio?" first; without that, the recording keeps the video.
+    if (state.condensing) {
+      if (!msg.stopCondense) return;
+      await stopCondensing(state.condensing);
+    }
     const cue = state.primary[msg.index];
-    if (!cue || !state.active || busyCondensing()) return;
+    if (!cue || !state.active) return;
     if (msg.type === "seek") adapter.seek(cue.start_ms);
     if (msg.type === "mine") mine({ quick: false, cueIndex: msg.index, lastIndex: msg.last });
   });
@@ -383,26 +396,45 @@ function currentIndex() {
 }
 
 /** @param {number} delta */
-function stepLine(delta) {
-  if (!state.primary.length || busyCondensing()) return;
+async function stepLine(delta) {
+  if (!state.primary.length || !(await allowAction())) return;
   const i = Math.max(0, Math.min(state.primary.length - 1, currentIndex() + delta));
   adapter.seek(state.primary[i].start_ms);
 }
 
-function replayLine() {
+async function replayLine() {
+  if (!(await allowAction())) return;
   const video = adapter.getVideo();
   const i = currentIndex();
-  if (!video || i < 0 || busyCondensing()) return;
+  if (!video || i < 0) return;
   state.replaying = true;
   playRange(video, state.primary[i].start_ms, state.primary[i].end_ms, adapter.seek).finally(() => (state.replaying = false));
 }
 
 // --- condensed audio (M7) ---
 
-/** True (and says so on the bar) while the condensed audio is recording: it owns play, pause and seek. */
-function busyCondensing() {
-  if (state.condensing) overlay?.showToast("Recording condensed audio: cancel it in the side panel first", { error: true });
-  return state.condensing !== null;
+/**
+ * An action on the page that moves the video (mine, replay, A/D) while condensed audio records: the first
+ * press only warns; pressing again within 4 s stops the recording, then the action goes ahead.
+ * (A dialog would throw the player out of fullscreen.)
+ * @returns {Promise<boolean>} true when the action can go ahead
+ */
+async function allowAction() {
+  const job = state.condensing;
+  if (!job) return true;
+  if (Date.now() < job.confirmUntil) {
+    await stopCondensing(job);
+    return true;
+  }
+  job.confirmUntil = Date.now() + 4000;
+  overlay?.showToast("Recording condensed audio · press again to stop it", { error: true });
+  return false;
+}
+
+/** @param {CondenseJob} job */
+async function stopCondensing(job) {
+  job.cancelled = true;
+  await job.finished;
 }
 
 /**
@@ -412,7 +444,7 @@ function busyCondensing() {
  */
 function onCondensePort(port) {
   if (port.name !== CONDENSE_PORT) return;
-  /** @type {{cancelled: boolean} | null} */
+  /** @type {CondenseJob | null} */
   let job = null;
   const post = (/** @type {object} */ msg) => {
     try {
@@ -425,15 +457,15 @@ function onCondensePort(port) {
   port.onMessage.addListener((/** @type {{type: string}} */ msg) => {
     if (msg.type === "cancel" && job) job.cancelled = true;
     if (msg.type === "start" && !job) {
-      job = { cancelled: false };
-      condense(job, post);
+      job = { cancelled: false, ownSeekUntil: 0, jumped: false, confirmUntil: 0 };
+      job.finished = condense(job, post);
     }
   });
 }
 
 /**
  * Record the whole video's lines (long pauses left out) as MP3 parts for the side panel.
- * @param {{cancelled: boolean}} job
+ * @param {CondenseJob} job
  * @param {(msg: object) => void} post
  */
 async function condense(job, post) {
@@ -446,15 +478,36 @@ async function condense(job, post) {
   if (!state.primary.length) return post({ type: "error", message: "Subtitles still loading" });
   state.condensing = job;
   const back = { ms: video.currentTime * 1000, paused: video.paused };
+  /** @param {number} ms */
+  const seek = async (ms) => {
+    job.ownSeekUntil = Infinity;
+    try {
+      await adapter.seek(ms);
+    } finally {
+      job.ownSeekUntil = performance.now() + 1500; // players sometimes nudge the position once more
+    }
+  };
+  // The player's own seek bar or arrow keys: cannot be stopped, so that part is recorded again.
+  const onSeeking = () => {
+    if (performance.now() < job.ownSeekUntil || job.cancelled || adapter.isAd()) return;
+    job.jumped = true;
+    overlay?.showToast("Recording condensed audio · moving the video is undone. Cancel it in the side panel to stop", { error: true });
+  };
+  video.addEventListener("seeking", onSeeking);
   try {
     const audioTracks = adapter.audio === "tab" ? (await requestTabAudio()).getAudioTracks() : undefined;
     await condenseAudio({
       video,
       cues: state.primary,
       settings: settings.condense,
-      seek: adapter.seek,
+      seek,
       isAd: () => adapter.isAd(),
       isCancelled: () => job.cancelled,
+      takeJump: () => {
+        const jumped = job.jumped;
+        job.jumped = false;
+        return jumped;
+      },
       audioTracks,
       encode: async (data) => (await ask(MSG.ENCODE_MP3, { data, kbps: settings.condense.mp3Kbps })).data,
       onPart: (data) => post({ type: "part", data }),
@@ -466,6 +519,7 @@ async function condense(job, post) {
     if (!job.cancelled) log("condensed audio failed:", message);
     post(job.cancelled ? { type: "cancelled" } : { type: "error", message });
   } finally {
+    video.removeEventListener("seeking", onSeeking);
     state.condensing = null;
     if (state.video === info) {
       await adapter.seek(back.ms).catch(() => {});
@@ -506,7 +560,7 @@ async function mine({ quick, pick, cueIndex, lastIndex }) {
     overlay?.showToast("No ja/zh/it subtitles on this video", { error: true });
     return;
   }
-  if (adapter.isAd() || busyCondensing()) return;
+  if (adapter.isAd() || !(await allowAction())) return;
   if (!state.primary.length) {
     overlay.showToast("Subtitles still loading", { error: true });
     return;

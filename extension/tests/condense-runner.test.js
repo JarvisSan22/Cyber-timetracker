@@ -82,6 +82,19 @@ test("condenseAudio: an ad stops the span; it is recorded again after the ad", a
   assert.deepEqual(calls.map((c) => c[0]), [1000, 1000, 10000]);
 });
 
+test("condenseAudio: the user moving the video redoes the span, without using up attempts", async () => {
+  let jump = false;
+  const take = () => {
+    const was = jump;
+    jump = false;
+    return was;
+  };
+  // the user jumps during the first span twice, then the span plays through
+  const { calls, record } = fakes([{ before: () => (jump = true) }, { before: () => (jump = true), toMs: 1100 }]);
+  assert.equal(await run({ record, takeJump: take }), "[1000][10000]");
+  assert.deepEqual(calls.map((c) => c[0]), [1000, 1000, 1000, 10000]);
+});
+
 test("condenseAudio: cancel stops at once with an error; no subtitles is an error", async () => {
   let cancelled = false;
   const { calls, record } = fakes([{ before: () => (cancelled = true) }]);

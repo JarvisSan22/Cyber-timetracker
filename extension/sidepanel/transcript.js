@@ -244,14 +244,26 @@ function disconnect() {
   view.port = null;
 }
 
-/** @param {{type: "seek" | "mine", index: number, last?: number}} msg */
+/** @typedef {{type: "seek" | "mine", index: number, last?: number, stopCondense?: boolean}} Command */
+
+/** Asked before each command is sent; false drops it (the condensed audio box asks to stop its recording). */
+/** @type {(msg: Command, tabId: number | null) => boolean} */
+let beforeSend = () => true;
+
+export function guardCommands(/** @type {(msg: Command, tabId: number | null) => boolean} */ fn) {
+  beforeSend = fn;
+}
+
+/** @param {Command} msg @returns {boolean} false when the command was dropped */
 function send(msg) {
+  if (!beforeSend(msg, view.tabId)) return false;
   connect();
   try {
     view.port?.postMessage(msg);
   } catch {
     view.port = null;
   }
+  return true;
 }
 
 // --- selecting several lines for one card ---
@@ -273,7 +285,7 @@ function mineSelection() {
 
 /** @param {number} first @param {number} last */
 function mineLines(first, last) {
-  send({ type: "mine", index: first, last });
+  if (!send({ type: "mine", index: first, last })) return;
   select(null);
   view.onMine?.();
 }
