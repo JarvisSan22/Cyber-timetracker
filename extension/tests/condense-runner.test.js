@@ -95,6 +95,23 @@ test("condenseAudio: the user moving the video redoes the span, without using up
   assert.deepEqual(calls.map((c) => c[0]), [1000, 1000, 1000, 10000]);
 });
 
+test("condenseAudio: the video leaving the span (timeline click, no seek event) redoes it and tells", async () => {
+  const video = { duration: 30, currentTime: 0 };
+  const calls = [];
+  let jumps = 0;
+  const record = async (v, startMs, endMs, { isCancelled }) => {
+    calls.push(startMs);
+    v.currentTime = startMs / 1000;
+    if (calls.length === 1) v.currentTime = 25; // user clicked far ahead on the timeline
+    if (isCancelled()) throw new Error("Recording cancelled");
+    v.currentTime = endMs / 1000;
+    return { data: b64(`${startMs}`), fromMs: startMs, toMs: endMs };
+  };
+  assert.equal(await run({ record, video, onJump: () => jumps++ }), "[1000][10000]");
+  assert.deepEqual(calls, [1000, 1000, 10000]);
+  assert.equal(jumps, 1);
+});
+
 test("condenseAudio: cancel stops at once with an error; no subtitles is an error", async () => {
   let cancelled = false;
   const { calls, record } = fakes([{ before: () => (cancelled = true) }]);

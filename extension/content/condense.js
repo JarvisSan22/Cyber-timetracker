@@ -9,6 +9,9 @@ import { recordRange } from "./recorder.js";
 /** A span that ended this much before its end time was cut short (page paused it, seek went wrong). */
 const SHORT_MS = 300;
 const ATTEMPTS = 3;
+/** The video this far outside the span being recorded was moved by the user (seeking lands a little early). */
+const OFF_SPAN_BEFORE_MS = 1000;
+const OFF_SPAN_AFTER_MS = 3000; // also covers a late end check in a slowed-down tab
 /** Redos after an ad or a jump by the user, before giving up. */
 const MAX_REDOS = 20;
 
@@ -31,19 +34,27 @@ async function waitWhileAd(isAd, isCancelled) {
  * @param {() => boolean} options.isAd an ad is playing (YouTube): wait, and redo a span it cut into
  * @param {() => boolean} options.isCancelled
  * @param {() => boolean} [options.takeJump] true once after the user moved the video (player's own seek bar):
- *   the span is stopped and redone from its start
+ *   the span is stopped and redone from its start. The video leaving the span counts as a jump too.
+ * @param {() => void} [options.onJump] a span was stopped because the video was moved
  * @param {MediaStreamTrack[]} [options.audioTracks] the shared tab's audio (Netflix)
  * @param {(webm: string) => Promise<string>} options.encode base64 WebM to base64 MP3
  * @param {(mp3: string) => void} options.onPart each span's MP3 (base64), in order; joined they make one file
  * @param {(p: {span: number, spans: number, msLeft: number}) => void} [options.onProgress]
  * @param {typeof recordRange} [options.record]
  */
-export async function condenseAudio({ video, cues, settings, seek, isAd, isCancelled, takeJump = () => false, audioTracks, encode, onPart, onProgress = () => {}, record = recordRange }) {
+export async function condenseAudio({ video, cues, settings, seek, isAd, isCancelled, takeJump = () => false, onJump = () => {}, audioTracks, encode, onPart, onProgress = () => {}, record = recordRange }) {
   const spans = planSpans(cues, { ...settings, maxSpanMs: MAX_SPAN_MS });
   if (!spans.length) throw new Error("No subtitle lines to record");
   // Recording stops early when an ad starts or the user moves the video, and the span is redone after it.
   let jumped = false;
-  const stop = () => isCancelled() || isAd() || (jumped ||= takeJump());
+  /** @type {import("../shared/condense.js").Span | null} */
+  let recording = null;
+  // Checked while a span plays (after its seek): the time outside the span means the user moved the video.
+  const offSpan = () => {
+    const ms = video.currentTime * 1000;
+    return Boolean(recording && (ms < recording.startMs - OFF_SPAN_BEFORE_MS || ms > recording.endMs + OFF_SPAN_AFTER_MS));
+  };
+  const stop = () => isCancelled() || isAd() || (jumped ||= takeJump() || offSpan());
   const durationMs = () => (Number.isFinite(video.duration) ? video.duration * 1000 : Infinity);
   let redos = 0;
   const redo = () => {
@@ -57,9 +68,11 @@ export async function condenseAudio({ video, cues, settings, seek, isAd, isCance
       await waitWhileAd(isAd, isCancelled);
       if (isCancelled()) throw new Error("Recording cancelled");
       jumped = false;
+      recording = span;
       try {
         const got = await record(video, span.startMs, span.endMs, { seek, isCancelled: stop, audioTracks });
         if (jumped || isAd()) {
+          if (jumped) onJump();
           redo();
           continue;
         }
@@ -68,10 +81,12 @@ export async function condenseAudio({ video, cues, settings, seek, isAd, isCance
         attempt++;
       } catch (e) {
         if (isCancelled()) throw e;
+        if (jumped) onJump();
         if (jumped || isAd()) redo();
         else if (attempt++ >= ATTEMPTS) throw e;
       }
     }
+    recording = null;
     const mp3 = await encode(clip.data);
     if (isCancelled()) throw new Error("Recording cancelled");
     onPart(mp3);

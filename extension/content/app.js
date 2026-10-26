@@ -491,8 +491,6 @@ async function condense(job, post) {
   const onSeeking = () => {
     if (performance.now() < job.ownSeekUntil || job.cancelled || adapter.isAd()) return;
     job.jumped = true;
-    post({ type: "jumped" });
-    overlay?.showToast("Recording condensed audio · moving the video is undone. Cancel it in the side panel to stop", { error: true });
   };
   video.addEventListener("seeking", onSeeking);
   try {
@@ -508,6 +506,11 @@ async function condense(job, post) {
         const jumped = job.jumped;
         job.jumped = false;
         return jumped;
+      },
+      onJump: () => {
+        log("condensed audio: the video was moved, recording that part again");
+        post({ type: "jumped" });
+        overlay?.showToast("Recording condensed audio · moving the video is undone. Cancel it in the side panel to stop", { error: true });
       },
       audioTracks,
       encode: async (data) => (await ask(MSG.ENCODE_MP3, { data, kbps: settings.condense.mp3Kbps })).data,
