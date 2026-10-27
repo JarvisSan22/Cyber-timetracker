@@ -293,27 +293,34 @@ function mineLines(first, last) {
 // --- current line and following ---
 
 /** @param {number} index */
-function highlight(index) {
+/** @param {number} index @param {ScrollBehavior} [behavior] */
+function highlight(index, behavior = "smooth") {
   const list = $("t-list");
   list.querySelector(".t-row.current")?.classList.remove("current");
   view.index = index;
   const row = /** @type {HTMLElement | null} */ (list.querySelector(`.t-row[data-i="${index}"]`));
   if (!row) return;
   row.classList.add("current");
-  if (view.follow && !$("transcript").hidden) row.scrollIntoView({ block: "center", behavior: "smooth" });
+  if (view.follow && !$("transcript").hidden) row.scrollIntoView({ block: "center", behavior });
 }
 
-/** @param {boolean} on */
-function setFollow(on) {
+/** @param {boolean} on @param {ScrollBehavior} [behavior] */
+function setFollow(on, behavior = "smooth") {
   view.follow = on;
   $("t-follow").classList.toggle("active", on);
   $("t-follow").setAttribute("aria-pressed", String(on));
-  if (on && view.index >= 0) highlight(view.index);
+  if (on && view.index >= 0) highlight(view.index, behavior);
 }
 
-/** Scroll to the current line when the tab is shown again. */
-export function onTranscriptShown() {
-  if (view.follow && view.index >= 0) highlight(view.index);
+/**
+ * Scroll to the current line when the tab is shown again. The Card tab used the panel's scroll, so jump
+ * there at once instead of a long smooth scroll from wherever it was left.
+ * @param {{afterCard?: boolean}} [options] afterCard: back from a card that was sent or discarded; follow the
+ *   video again even if scrolling by hand (to find the line to mine) had turned it off
+ */
+export function onTranscriptShown({ afterCard = false } = {}) {
+  if (afterCard) setFollow(true, "instant");
+  else if (view.follow && view.index >= 0) highlight(view.index, "instant");
 }
 
 // --- known words ---

@@ -64,8 +64,8 @@ async function followActiveTab() {
 
 // --- Card / Transcript tabs ---
 
-/** @param {"card" | "transcript"} tab */
-function showTab(tab) {
+/** @param {"card" | "transcript"} tab @param {{afterCard?: boolean}} [options] */
+function showTab(tab, options) {
   state.tab = tab;
   for (const button of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("#tabs button"))) {
     button.classList.toggle("active", button.dataset.tab === tab);
@@ -73,7 +73,7 @@ function showTab(tab) {
   $("transcript").hidden = tab !== "transcript";
   $("empty").hidden = tab !== "card" || Boolean(state.record);
   $("editor").hidden = tab !== "card" || !state.record;
-  if (tab === "transcript") onTranscriptShown();
+  if (tab === "transcript") onTranscriptShown(options);
 }
 $("tabs").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   const button = /** @type {HTMLElement} */ (e.target).closest("button");
@@ -107,7 +107,7 @@ function show(record) {
   $("lang").hidden = !record;
   // A new card opens the Card tab; sending or discarding it goes back to the transcript.
   if (record && isNew) showTab("card");
-  else if (!record && hadRecord && hasTranscript()) showTab("transcript");
+  else if (!record && hadRecord && hasTranscript()) showTab("transcript", { afterCard: true });
   else showTab(state.tab);
   if (!record) return;
   if (isNew) fillForm(record);
