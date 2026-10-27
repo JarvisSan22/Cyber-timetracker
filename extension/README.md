@@ -51,6 +51,15 @@ The side panel's **Transcript** tab lists every subtitle line of the video, with
 
 <p align="center"><img src="../docs/images/readme-11.png" alt="Transcript tab: current line highlighted, word colours, new-word counts, lines selected for one card" width="420"></p>
 
+### Condensed audio
+One MP3 of the whole video with the long pauses left out, to listen to again and again away from the screen.
+- **♫ Condensed audio** at the top of the Transcript tab shows how long it will take ("≈ 14 min to record · 23 min video").
+- **Start** asks where to save: Downloads the first time, the folder you used last time after that.
+- It plays only the subtitle lines and skips pauses longer than 1.5 s, in real time, so recording takes about as long as the MP3 will be. A progress bar and **Cancel** show while it runs.
+- **Don't touch the video while it records**: a click on the player's timeline is undone and that part recorded again. Jumping to or mining a line asks first; on the video, press ⌬, A/D or Alt+R twice to stop the recording.
+- Keep the tab playing with sound (Chrome slows muted or hidden tabs). On Netflix, click ⌬ on the video once first to share the tab's audio, and keep Netflix's volume at full.
+- Padding, the pause length and the bitrate are in Options → Condensed audio.
+
 ### The card in Anki
 Own note type **Cyber Sentence**, one deck per language (`Mining::Japanese`, `Mining::Chinese`, `Mining::Italian`), styled like the tracker (same theme colours and fonts, pushed to Anki from Options).
 
@@ -86,7 +95,7 @@ Works like YouTube:
 - It stops when the video ends, you leave it, or after 10 min paused.
 - **Mined cards** are counted in Cyber Tracker ("Cards mined" on the Statistics page).
 - **Tracker offline**: sessions and cards are kept and sent later.
-- The **popup** shows this tab's session with a live clock, cards today, and "Don't track this tab".
+- The **popup** shows this tab's session with a live clock, cards today, and "Don't track this tab". **Open Cyber Tracker** switches to the tracker's tab, or opens it.
 
 <p align="center"><img src="../docs/images/readme-8.png" alt="Toolbar popup: Anki and tracker status, this tab, cards today" width="420"></p>
 

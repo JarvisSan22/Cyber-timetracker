@@ -243,3 +243,21 @@ Groundwork for Netflix with no change in behaviour on YouTube.
 
 - **Several lines**: Shift-click in the Transcript selects from the last clicked line (or the current one) to the clicked line, at most 10 lines; "⌬ Mine as one card" (or ⌬ on a selected line) sends `mine {index, last}`. The content script joins the lines like "+ line" does (`joinCues`: sentence, translation by overlap, clip from the first start to the last end) and keeps first/last so the clip controls still work.
 - **Picture choices instead of a retake slider**: the slider that seeked the paused video to take a new picture broke pictures and was taken out. Now the frames come from the replay that records the audio anyway: `recordRange` grabs pictures at the middle of 4 equal parts of the clip while it plays (no extra seeking). Netflix's tab screenshots are limited to 2 a second, so a short clip gets fewer (one per 600 ms), and the bar and Netflix's controls stay hidden during that replay. The side panel shows them as thumbnails next to the picture taken when mining; the chosen one is sent, the others are not. Quick mine takes none.
+
+## Cyber Miner M7: condensed audio
+
+Plan: [EXTENSION_DESIGN.md](EXTENSION_DESIGN.md), milestone 7.
+
+- **Subtitles find the pauses**, not loudness: the extension plays only the lines (padded 250 ms before, 400 ms after) and seeks over gaps of 1.5 s or more. Recording is real time (both sites only give audio by playing it), so it takes as long as the condensed MP3, not the whole video. Spans are at most 60 s and never overlap (`shared/condense.js` `planSpans`).
+- **Span by span with the card recorder** (`recordRange`) and the card MP3 encoder (offscreen lamejs). lamejs writes bare MP3 frames with the same rate, channels and bitrate every time, so the parts joined are one valid file.
+- **Saved where the user picks**: Start opens Chrome's save dialog (`showSaveFilePicker`, fixed `id` and `startIn: "downloads"`), so it opens in Downloads the first time and in the last folder used after that. Chosen over `chrome.downloads` (needs a new permission, cannot point at a folder, and blob URLs from the page are awkward there) and over an `<a download>` from the page (always Downloads). The dialog needs a click, so it comes before recording, and the panel writes the parts into the file as they arrive; cancel, errors and a closed tab remove the file.
+- **Own port** (`condense`) per recording instead of the transcript port: the panel's transcript port is dropped when the panel follows another tab, which would have stopped the recording. Closing the panel cancels it.
+- **Ads**: the adapter's existing `isAd()` (YouTube and Netflix) is used; no new `adShowing()`. The span an ad cuts is redone after the ad.
+- **The user moving the video**: the player's own controls cannot be blocked, so a move is undone: the span is redone from its start. A `seeking` event alone missed YouTube timeline clicks in testing, so the runner also checks the time against the span (more than 1 s before or 3 s after counts; 3 s also covers a late check in a slowed tab). Our own seeks and 1.5 s after them are not counted (players nudge the position once more). At most 20 redos, then an error.
+- **Asking before stopping**: jumping to or mining a line from the transcript shows a dialog ("Stop the recording and jump to this line?"); on the page (bar, A/D, Alt+R) the first press shows a toast and a second within 4 s stops it, because a dialog would leave fullscreen. A note under the progress bar says not to touch the video and flashes red when it was moved.
+- **Netflix** works the same with the shared tab audio (click ⌬ once first). Tab audio is the tab's output, so Netflix's volume slider sets the file's loudness. Next-episode autoplay before the end cancels the recording (a new video); keeping the part already recorded is left for later.
+- Tested by hand on YouTube and Netflix 2026-10-27.
+
+## Cyber Miner popup: open Cyber Tracker
+
+- **Open Cyber Tracker** button in the popup: switches to a tab that already shows the tracker (`chrome.tabs.query` on the tracker address, which works with the tracker's host permission asked when the address is saved), else opens it in a new tab; with no address set it opens Options.

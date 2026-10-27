@@ -52,6 +52,10 @@ A Chrome extension in the same style, in [`extension/`](extension/README.md). It
 
 <p align="center"><img src="docs/images/readme-11.png" alt="Transcript tab in the side panel" width="420"></p>
 
+**Condensed audio**
+- One MP3 of the whole video with the long pauses left out, for listening practice.
+- Recorded in real time from the subtitle lines; you pick where to save it (the last folder is remembered).
+
 **The card in Anki**
 - Its own **Cyber Sentence** note type, one deck per language, styled like the tracker.
 - Sentence with the word highlighted, translation, audio, picture.
@@ -75,7 +79,8 @@ A Chrome extension in the same style, in [`extension/`](extension/README.md). It
   - whether Anki and the tracker are connected;
   - this tab's session;
   - cards mined today;
-  - "Don't track this tab".
+  - "Don't track this tab";
+  - an **Open Cyber Tracker** button.
 
 <p align="center"><img src="docs/images/readme-8.png" alt="Cyber Miner toolbar popup" width="420"></p>
 

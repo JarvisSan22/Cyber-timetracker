@@ -183,12 +183,14 @@ Note: the Netflix part of step 1 changed during M4. The code asks for Chrome's "
 One MP3 of the whole video with only the spoken parts, for listening practice. The subtitles say where speech is, so the extension plays only the lines and seeks over the gaps.
 
 1. **Spans**: each primary cue is padded (`−250 ms` / `+400 ms`). Neighbours whose gap is shorter than 1.5 s are merged, so short breaths stay and long silences go. A cluster longer than 60 s is split at a cue boundary. Result: a list of `{startMs, endMs}` spans.
-2. **Record span by span** with the same `recordRange` as cards: seek to the span start, play at 1×, stop at the span end. YouTube records the element's audio; Netflix the shared tab audio. The gaps between spans are never recorded, because the recorder only runs inside a span.
-3. **Encode** each span with the existing `encode-mp3` message (offscreen document + lamejs), mono 64 kbps, 44.1 kHz.
-4. **Join**: lamejs writes bare MP3 frames (no ID3 or Xing header), and every part has the same rate, channels and bitrate, so the parts are simply concatenated into one valid file.
-5. **Save**: the content script makes a `Blob` and downloads it through an `<a download>` link as `<title> (condensed).mp3`. No `downloads` permission, nothing goes to the tracker or Anki.
+2. **Pick the file first**: Start in the side panel opens Chrome's save dialog (`showSaveFilePicker` with a fixed `id`, so it opens in the folder used last time, and in Downloads the first time) with `<title> (condensed).mp3`. The dialog needs the click, so it comes before recording.
+3. **Record span by span** with the same `recordRange` as cards: seek to the span start, play at 1×, stop at the span end. YouTube records the element's audio; Netflix the shared tab audio. The gaps between spans are never recorded, because the recorder only runs inside a span.
+4. **Encode** each span with the existing `encode-mp3` message (offscreen document + lamejs), mono 64 kbps, 44.1 kHz.
+5. **Write**: each MP3 part goes to the side panel over the recording's port and is written straight into the file. lamejs writes bare MP3 frames (no ID3 or Xing header), and every part has the same rate, channels and bitrate, so the parts joined are one valid file. Done closes the file; Cancel, an error or a closed tab throws it away. No `downloads` permission, nothing goes to the tracker or Anki.
 
-Why span by span and not one long recording: each message stays small (a 60 s span is about 1 MB of base64), the offscreen document never decodes a 25 min WebM (about 260 MB of PCM), a failed span is redone on its own, and Cancel leaves nothing half written.
+Why span by span and not one long recording: each message stays small (a 60 s span is about 1 MB of base64), the offscreen document never decodes a 25 min WebM (about 260 MB of PCM), nothing big is kept in memory, a failed span is redone on its own, and Cancel leaves nothing half written.
+
+**Keeping the recording intact**: the recording owns play, pause and seek. YouTube ads (`adapter.isAd()`) stop the span; it waits for the ad to end and redoes it. A move of the video by the user (the player's timeline or keys) is caught two ways: a `seeking` event that is not ours (ours, and 1.5 s after them, are ignored), and the time leaving the span (more than 1 s before it or 3 s after it); the span is redone from its start, so the move is undone. Our own actions that would move the video ask first: in the side panel a dialog ("Stop the recording and jump to this line?"), on the page a toast and a second press within 4 s (a dialog would leave fullscreen). A note under the progress bar says not to touch the video and flashes red when the video was moved.
 
 It stays real time. Faster playback does not help, because the recorded audio would be fast too, and neither site gives the extension the raw audio stream (YouTube streams are not reachable from our hooks; Netflix is DRM). So a 24 min episode with 14 min of speech takes about 14 min to record. Music and sound effects inside a line are kept; videos without subtitles cannot be condensed.
 
@@ -349,6 +351,7 @@ extension/
 ├── content/
 │   ├── main.js                # picks adapter, mounts overlay, playback events
 │   ├── overlay.js             # subtitle bar (clickable characters), status chip, toast (Shadow DOM)
+│   ├── condense.js            # condensed audio runner: span by span, redo on ads and user moves (M7)
 │   ├── page-hook.js           # MAIN world, shared: fetch/XHR copy of the URLs the site file wants, command plumbing
 │   ├── hooks/                 # MAIN world, per site: which responses to copy, player commands (Netflix seek)
 │   │   ├── youtube.js
@@ -362,11 +365,13 @@ extension/
 │   ├── offscreen.js           # getUserMedia(tab), route to speakers, record, MP3, crop
 │   └── pcm-worklet.js         # AudioWorklet collecting PCM frames
 ├── popup/                     # popup.html, popup.js
-├── sidepanel/                 # card editor: sentence picking, dictionary results, fields, send (transcript in M5)
+├── sidepanel/                 # card editor: sentence picking, dictionary results, fields, send (transcript in M5;
+│                              #   condense.js: condensed audio box, save dialog, writes the parts, M7)
 ├── options/                   # options.html, options.js
 ├── shared/
 │   ├── messages.js            # message type names
 │   ├── settings.js            # defaults + chrome.storage.sync wrapper
+│   ├── condense.js            # condensed audio spans, estimate, file name (M7)
 │   ├── subtitles.js           # json3, TTML, WebVTT, SRT, ASS parsers + cue lookup
 │   ├── card.js                # draft → Anki fields + tags; note type templates + CSS
 │   ├── wordpick.js            # word around a click without a dictionary; line -> sentence offsets
@@ -521,21 +526,21 @@ Done when: the transcript follows the video on YouTube and Netflix, clicking a l
 4. README section for install, AnkiConnect setup, dictionary downloads.
 5. Load a subtitle file by hand (SRT, VTT, ASS) from the side bar, for Netflix titles with image subtitles and for YouTube.
 
-**M7 · Condensed audio** (planned 2026-10-26)
+**M7 · Condensed audio** (planned and built 2026-10-26–27, M7a–d; see DECISIONS)
 
 One MP3 of the whole video with long pauses cut, to listen to on repeat. Works the same on YouTube and Netflix: it uses the primary cues the content script already has (`state.primary`), the card recorder (`recordRange`) and the card MP3 encoder (`encode-mp3`). How it works: see "Condensed audio (MP3)" under How the hard parts work.
 
-Decided 2026-10-26: gaps are found from the subtitles, not from loudness (recording time is the condensed length, not the whole video); output is the MP3 only (no LRC or SRT); the file is downloaded, not stored in the tracker or Anki.
+Decided 2026-10-26: gaps are found from the subtitles, not from loudness (recording time is the condensed length, not the whole video); output is the MP3 only (no LRC or SRT); the file is saved where the user picks (save dialog, last folder remembered), not stored in the tracker or Anki.
 
 Data flow:
 
 ```mermaid
 flowchart LR
-    panel["side panel<br/>Transcript tab"] -- "port 'transcript': condense start / cancel" --> content["content/condense.js<br/>spans + recordRange"]
-    content -- "port: progress {span, spans, msLeft}" --> panel
+    panel["side panel<br/>Transcript tab"] -- "port 'condense': start / cancel" --> content["content/condense.js<br/>spans + recordRange"]
     content -- "ENCODE_MP3 (WebM per span)" --> offscreen["offscreen document<br/>lamejs"]
     offscreen -- "MP3 part" --> content
-    content -- "Blob + &lt;a download&gt;" --> file["&lt;title&gt; (condensed).mp3"]
+    content -- "port: part / progress / jumped / done" --> panel
+    panel -- "showSaveFilePicker + createWritable" --> file["&lt;title&gt; (condensed).mp3"]
 ```
 
 Steps:
@@ -544,16 +549,15 @@ Steps:
    - `shared/condense.js` (new, pure, tested): `planSpans(cues, {padBeforeMs, padAfterMs, mergeGapMs, maxSpanMs})` → `[{startMs, endMs, firstCue, lastCue}]`, and `condensedMs(spans)` for the time estimate.
    - `tests/condense.test.js` with the json3 and Netflix fixtures: padding, merging under and over `mergeGapMs`, split at `maxSpanMs`, overlapping cues, the first cue near 0 (no negative start), the estimate.
 2. **M7b, the runner**
-   - `content/condense.js` (new): for each span, `recordRange(video, startMs, endMs, {seek: adapter.seek, audioTracks, isCancelled})`, then `ENCODE_MP3` with the condense bitrate; keeps the MP3 parts as bytes; at the end joins them into one `Blob` and downloads it. Restores the old position and play state when done or cancelled.
-   - Checks per span: if the span played short (`toMs < endMs − 300`) or the time jumped, redo it once. YouTube ads: the adapter gets `adShowing()` (`#movie_player` has `ad-showing`; Netflix returns false); the runner waits until the ad is over and redoes the span. On the Netflix ad tier the jump check catches it.
-   - While it runs, the bar's mining and hotkeys are off (`mine()` and replay say "Recording condensed audio"), and the watch session keeps counting as normal playback.
-   - `content/app.js`: the `transcript` port gets `condense {}` and `condense-cancel {}`; progress goes back on the same port.
-   - `shared/messages.js`: the port command names.
+   - `content/condense.js` (new): `condenseAudio` records each span with `recordRange`, encodes it with `ENCODE_MP3` at the condense bitrate and hands each MP3 part to `onPart`. `record` is injectable, so `tests/condense-runner.test.js` runs it with a fake recorder.
+   - Checks per span: played short (`toMs < endMs − 300`, the video's end excepted): up to 3 tries, then the short one is kept. Ads (the adapter's existing `isAd()`, YouTube and Netflix) and user moves are redone without using up tries, at most 20 redos.
+   - `content/app.js`: an own port per recording (`condense`, name in `shared/condense.js`): `start`, `cancel`, and closing the port cancels. Back on it: `progress`, `part`, `jumped`, `done`, `cancelled`, `error`. A new video cancels it. Position and play state are restored afterwards; the watch session keeps counting.
+   - Mining, replay and A/D during a recording: toast first, a second press within 4 s stops the recording and goes ahead. Transcript commands with `stopCondense` (the panel asked) stop it first.
 3. **M7c, side panel and options**
-   - Transcript tab header: **Condensed audio** button. Before starting it shows "≈ 14 min to record · 23 min video · 380 lines". While running: a progress bar (span n of N, minutes left) and Cancel. Done: "Saved <file name>".
-   - No subtitles loaded: button disabled with the reason. Netflix with the tab not shared yet: same message as mining from the panel (M5).
-   - UI note while running: "Keep this tab playing with sound; muting or hiding it can make spans run long" (see Risks).
-   - `shared/settings.js` defaults `condense: {mergeGapMs: 1500, padBeforeMs: 250, padAfterMs: 400, kbps: 64}`, and an Options section "Condensed audio" for the four values.
+   - `sidepanel/condense.js` (new), a box in the Transcript tab: "♫ Condensed audio" with "≈ 14 min to record · 23 min video"; while running a progress bar, "Recording n / N · m min left", Cancel and the don't-touch note; done: "Saved <file> (12.3 MB)".
+   - Its own port, so the panel switching to another tab does not stop it; closing the panel cancels (nowhere left to write).
+   - `transcript.js` gets `onTranscriptChange` (lines and settings for the estimate) and `guardCommands` (the stop dialog before seek and mine).
+   - `shared/settings.js` defaults `condense: {padBeforeMs: 250, padAfterMs: 400, mergeGapMs: 1500, mp3Kbps: 64}`, and an Options section "Condensed audio" for the four values.
 4. **M7d, tests and docs**
    - Hand checklist rows (below), DECISIONS section, READMEs (EN/JA) feature text.
 
@@ -564,7 +568,8 @@ Done when: a YouTube video (with a mid-roll ad) and a Netflix episode each give 
 - YouTube: manual ja subtitles; auto-generated only; no ja track (no tracking, overlay off); pre-roll and mid-roll ads; playlist next video; fullscreen; theater mode.
 - Netflix: Japanese episode with English subs; next-episode autoplay; title with image subtitles; fullscreen; screenshot on Windows (empty picture, no black image).
 - Anki closed when mining; tracker offline during a whole video; worker restarted mid-video (`chrome://serviceworker-internals`).
-- Condensed audio (M7): whole YouTube video with a mid-roll ad; whole Netflix episode; Cancel halfway (no file, position restored); tab in the background during recording; the MP3 plays to the end in VLC and on a phone.
+- Condensed audio (M7): whole YouTube video with a mid-roll ad; whole Netflix episode (tab shared first, Netflix volume at full); save dialog opens in Downloads the first time and in the last folder after; Cancel halfway (no file, position restored); clicking a transcript line (dialog) and pressing A twice (stops); a click on the player's timeline is undone and the note flashes; the MP3 plays to the end in VLC and on a phone.
+- Popup: "Open Cyber Tracker" switches to an open tracker tab, else opens one; with no address it opens Options.
 
 ## Risks
 
@@ -582,8 +587,11 @@ Done when: a YouTube video (with a mid-roll ad) and a Netflix episode each give 
 | Site terms of service | Intercepting subtitles is a gray area | Personal use, no store release, no video downloading |
 | Condensed audio: Chrome slows timers in hidden or muted tabs | The recorder checks the end time late, spans run long | Audible tabs are not slowed: keep the tab playing with sound, say so in the panel; the span end check uses `video.currentTime`, so a late check only adds a little audio |
 | Condensed audio: seeking between spans buffers | Pauses while recording | Recorder runs only inside a span, so buffering is never recorded; only total time grows |
-| Condensed audio: YouTube ad in the middle of a span | Ad audio in the file | Adapter `adShowing()`, wait and redo the span |
-| Condensed audio: long video | Memory in the content script | Only MP3 parts are kept (about 0.5 MB per minute at 64 kbps) |
+| Condensed audio: YouTube ad in the middle of a span | Ad audio in the file | Adapter `isAd()` stops the span; wait and redo it |
+| Condensed audio: the user moves the video (timeline, keys) | Wrong or repeated audio | Caught by a foreign `seeking` event or the time leaving the span; the span is redone; note in the panel; a small jump inside the span can still repeat a moment of audio |
+| Condensed audio: Netflix records the tab's output | Quiet file when Netflix's volume is low; other sounds in the tab are recorded | Keep Netflix at full volume, turn the speakers down instead |
+| Condensed audio: next-episode autoplay before the end | The new video cancels the recording; file deleted | Turn autoplay off or stay for the last minute; later: keep what was recorded |
+| Condensed audio: long video | Memory | Parts are written to the file as they come; nothing big is kept (the file grows about 0.5 MB per minute at 64 kbps) |
 | Condensed audio: auto-generated YouTube subtitles with loose timing | Words cut at span edges | Padding plus `last_word_ms` end times; padding is a setting |
 
 ## Open questions

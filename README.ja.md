@@ -52,6 +52,10 @@
 
 <p align="center"><img src="docs/images/readme-11.png" alt="サイドパネルの Transcript タブ" width="420"></p>
 
+**間を詰めた音声**
+- 動画全体から長い無音を除いた MP3 を 1 つ作り、聞き取りの練習に使えます。
+- 字幕の行をもとに実時間で録音し、保存先を選べます（前回のフォルダを覚えます）。
+
 **Anki のカード**
 - 専用のノートタイプ **Cyber Sentence** で、言語ごとにデッキを分け、トラッカーと同じデザインです。
 - 単語をハイライトした文、翻訳、音声、画像。
@@ -75,7 +79,8 @@
   - Anki とトラッカーの接続状態；
   - このタブのセッション；
   - 今日のカード数；
-  - 「Don't track this tab」。
+  - 「Don't track this tab」；
+  - **Open Cyber Tracker** ボタン。
 
 <p align="center"><img src="docs/images/readme-8.png" alt="Cyber Miner のツールバーのポップアップ" width="420"></p>
 
