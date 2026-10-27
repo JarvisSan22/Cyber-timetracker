@@ -1,6 +1,6 @@
 // @ts-check
 import { ask, MSG } from "../shared/messages.js";
-import { LANGUAGES, loadSettings, saveSettings } from "../shared/settings.js";
+import { baseUrl, LANGUAGES, loadSettings, saveSettings } from "../shared/settings.js";
 import { applyTheme } from "../shared/theme.js";
 import { BRAND_SVG } from "../shared/brand.js";
 
@@ -23,6 +23,25 @@ let windowId = -1;
 chrome.windows.getCurrent().then((w) => (windowId = w.id ?? -1));
 $("open-sidebar").addEventListener("click", () => {
   chrome.sidePanel.open({ windowId }).then(() => window.close(), () => {});
+});
+
+// Cyber Tracker in a tab: switch to it when it is already open, else open it. No address yet: Options.
+loadSettings().then((settings) => {
+  const url = baseUrl(settings.tracker.url);
+  const button = $("open-tracker");
+  if (url) button.title = url;
+  button.addEventListener("click", async () => {
+    if (!url) return chrome.runtime.openOptionsPage();
+    // Finding the open tab needs the tracker's host permission (asked when the address was saved).
+    const [open] = await chrome.tabs.query({ url: `${url}/*` }).catch(() => []);
+    if (open?.id !== undefined) {
+      await chrome.tabs.update(open.id, { active: true });
+      if (open.windowId !== undefined) await chrome.windows.update(open.windowId, { focused: true });
+    } else {
+      await chrome.tabs.create({ url: `${url}/` });
+    }
+    window.close();
+  });
 });
 
 ask(MSG.THEME_REFRESH).then((theme) => applyTheme(document.documentElement, theme)).catch(() => {});
