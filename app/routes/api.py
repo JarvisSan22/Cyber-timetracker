@@ -275,7 +275,7 @@ def export(format: Literal["json", "csv"] = "json", db: DBSession = Depends(get_
     stamp = timers.utcnow().strftime("%Y%m%d-%H%M")
     if format == "csv":
         return Response(
-            backup.export_csv(db),
+            "﻿" + backup.export_csv(db),  # BOM, so Excel reads the file as UTF-8
             media_type="text/csv; charset=utf-8",
             headers={"Content-Disposition": f'attachment; filename="cyber-tracker-sessions-{stamp}.csv"'},
         )

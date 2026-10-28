@@ -105,6 +105,8 @@ def test_ui_add_past_session_and_tag(client, seeded):
     assert r.status_code == 200 and "Added" in r.text
     r = client.post("/ui/sessions", data={"project_id": pid, "started_at": "2026-01-05T20:00"})
     assert "msg-error" in r.text
+    r = client.post("/ui/sessions", data={"project_id": pid, "started_at": "2026-01-05T20:00", "duration_min": "inf"})
+    assert r.status_code == 200 and "msg-error" in r.text
 
     r = client.post(f"/ui/projects/{pid}/tags", data={"new_tag": "Shadowing"})
     assert r.status_code == 200 and "Shadowing" in r.text
@@ -266,7 +268,7 @@ def test_api_stats_export_backup(client, seeded):
     assert st["sessions"] == 2 and len(st["series"]["minutes"]) == 7 and st["per_tag"]
 
     csv_text = client.get("/api/export?format=csv").text
-    assert csv_text.startswith("id,project,title") and "Podcast" in csv_text
+    assert csv_text.startswith("﻿id,project,title") and "Podcast" in csv_text
 
     r = client.get("/api/backup")
     assert r.status_code == 200 and r.content[:16] == b"SQLite format 3\x00"
