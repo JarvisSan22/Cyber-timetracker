@@ -38,7 +38,7 @@ export function initCondense() {
   // Jumping to or mining a line moves the video the recording is playing: ask first.
   guardCommands((msg, tabId) => {
     if (!job || job.tabId !== tabId) return true;
-    const what = msg.type === "seek" ? "jump to this line" : "mine this line";
+    const what = msg.type === "seek" ? "jump to this line" : msg.type === "reload" ? "reload the subtitles" : "mine this line";
     if (!confirm(`Condensed audio is still recording.\n\nStop the recording and ${what}? The unfinished MP3 is deleted.`)) return false;
     msg.stopCondense = true;
     return true;

@@ -40,8 +40,15 @@
     return Boolean(match);
   }
 
+  /** The track the player's CC menu has on (null when captions are off). */
+  function currentTrack() {
+    const t = player()?.getOption?.("captions", "track");
+    if (!t?.languageCode) return null;
+    return { languageCode: t.languageCode, kind: t.kind || "", translated: Boolean(t.translationLanguage) };
+  }
+
   register({
     wantsUrl: (url) => url.includes("/api/timedtext"),
-    commands: { info, enableTrack },
+    commands: { info, enableTrack, currentTrack },
   });
 })();

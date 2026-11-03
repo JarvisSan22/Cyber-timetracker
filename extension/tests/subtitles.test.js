@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  baseLang, cueIndexAt, cueShowing, describeTimedtextUrl, formatTime, overlappingText, parseJson3, pickTargetTrack, sentenceText,
+  baseLang, cueIndexAt, cueShowing, describeTimedtextUrl, formatTime, findTrack, overlappingText, parseJson3, pickTargetTrack, sentenceText,
   translationUrl,
 } from "../shared/subtitles.js";
 
@@ -87,6 +87,13 @@ test("track choice: spoken language (asr) wins, manual beats asr, simplified Chi
   assert.deepEqual(pickTargetTrack([{ languageCode: "it" }, { languageCode: "ja" }], targets), { languageCode: "ja" });
   assert.equal(pickTargetTrack([{ languageCode: "en", kind: "asr" }], targets), null);
   assert.equal(pickTargetTrack([{ languageCode: "ja" }], ["it"]), null);
+});
+
+test("reload: the track the player shows, asr kept apart from manual", () => {
+  const tracks = [{ languageCode: "ja" }, { languageCode: "it", kind: "asr" }, { languageCode: "it", kind: "" }];
+  assert.deepEqual(findTrack(tracks, { languageCode: "it", kind: "" }), { languageCode: "it", kind: "" });
+  assert.deepEqual(findTrack(tracks, { languageCode: "it", kind: "asr" }), { languageCode: "it", kind: "asr" });
+  assert.equal(findTrack(tracks, { languageCode: "en", kind: "" }), null);
 });
 
 test("translation URL keeps the player's token; manual English track or auto-translate", () => {

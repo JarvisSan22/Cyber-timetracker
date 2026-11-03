@@ -43,6 +43,7 @@ Mining pauses the video, leaves fullscreen and opens the **side panel** next to 
 ### Transcript
 The side panel's **Transcript** tab lists every subtitle line of the video, with its translation (blurred, shown or hidden like the bar).
 - **Follows the video**: the current line is highlighted and kept in view. Scrolling by hand pauses this; **⇣ Follow video** turns it back on.
+- **⟳ Reload subs** (YouTube): picked another track in the player's CC menu (say Italian instead of Japanese)? This loads that track. With captions off it redoes the automatic pick.
 - **Click a line** to jump there; **⌬** on a line mines it and opens the Card tab.
 - **Several lines in one card**: Shift-click a second line to select everything in between (up to 10 lines), then **⌬ Mine as one card**.
 - **Word colours** like the bar, with a "3 new" count per line. **Lines with new words** shows only lines with words not in your Anki decks, to find good lines to mine.

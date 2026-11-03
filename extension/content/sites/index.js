@@ -35,6 +35,8 @@ import { netflix } from "./netflix.js";
  * @property {() => Promise<VideoInfo | null>} info
  * @property {(video: VideoInfo, target: import("../../shared/subtitles.js").Track, request: SubtitleRequest) => () => void} subtitles
  *   start loading; calls back as tracks arrive; returns a function that stops the callbacks
+ * @property {() => Promise<{languageCode: string, kind: string, translated: boolean} | null>} [currentTrack]
+ *   the track the player's own subtitle menu has on (null: captions off); "Reload subs" loads it
  * @property {(ms: number) => Promise<void>} seek resolves once the video is at the new time
  * @property {(videoId: string, ms: number) => string} sourceUrl
  * @property {string} nativeCaptionsCss

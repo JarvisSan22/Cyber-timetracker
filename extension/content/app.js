@@ -15,7 +15,7 @@ import { CONDENSE_PORT } from "../shared/condense.js";
 import { ask, MSG } from "../shared/messages.js";
 import { LANGUAGES, loadSettings, saveSettings } from "../shared/settings.js";
 import {
-  baseLang, cueIndexAt, cueShowing, formatTime, joinCues, overlappingText, pickTargetTrack, sentenceText,
+  baseLang, cueIndexAt, cueShowing, formatTime, findTrack, joinCues, overlappingText, pickTargetTrack, sentenceText,
 } from "../shared/subtitles.js";
 
 const adapter = /** @type {import("./sites/index.js").SiteAdapter} */ (pickAdapter());
@@ -183,7 +183,9 @@ function applyTheme() {
 
 // --- video and tracks ---
 
-async function setupVideo() {
+/** @param {{languageCode: string, kind: string}} [shown] load this track (the player's choice, "Reload subs")
+ *   instead of the automatic pick */
+async function setupVideo(shown) {
   const token = ++state.setupToken;
   watcher.detach();
   deactivate();
@@ -209,7 +211,7 @@ async function setupVideo() {
   log("video", { title: video.title, show: video.show, spoken: video.spokenLang, tracks: video.tracks.map((t) => `${t.languageCode}${t.kind ? `/${t.kind}` : ""}${t.image ? "/image" : ""}`) });
   state.video = video;
   const settings = /** @type {import("../shared/settings.js").Settings} */ (state.settings);
-  const target = pickTargetTrack(video.tracks, settings.languages.targets, video.spokenLang);
+  const target = (shown && findTrack(video.tracks, shown)) || pickTargetTrack(video.tracks, settings.languages.targets, video.spokenLang);
   const player = adapter.getPlayerElement();
   if (player) overlay.mount(player);
   else log("player element not found");
@@ -249,6 +251,29 @@ async function setupVideo() {
   });
 }
 
+/**
+ * "Reload subs" in the side panel: load the track the player's own subtitle menu has on (YouTube), or
+ * the automatic pick again when captions are off or the site cannot tell.
+ */
+async function reloadSubtitles() {
+  if (state.mining) {
+    overlay.setStatus({ text: "Finish the card first", flash: true });
+    return;
+  }
+  const shown = await adapter.currentTrack?.();
+  const targets = state.settings?.languages.targets ?? [];
+  if (shown?.translated) {
+    overlay.setStatus({ text: "Auto-translated subtitles cannot be mined: pick an original track", flash: true });
+    return;
+  }
+  if (shown && !targets.includes(baseLang(shown.languageCode))) {
+    overlay.setStatus({ text: `Player subtitles are ${shown.languageCode}, not ${targets.join("/")}`, flash: true });
+    return;
+  }
+  log("reloading subtitles", shown ? `${shown.languageCode}${shown.kind ? `/${shown.kind}` : ""}` : "(automatic pick)");
+  await setupVideo(shown ?? undefined);
+}
+
 // --- transcript in the side panel (M5) ---
 
 /** The video's lines for the side panel's Transcript tab (stored by the worker per tab). */
@@ -273,6 +298,10 @@ function onTranscriptPort(port) {
     if (state.condensing) {
       if (!msg.stopCondense) return;
       await stopCondensing(state.condensing);
+    }
+    if (msg.type === "reload") {
+      reloadSubtitles();
+      return;
     }
     const cue = state.primary[msg.index];
     if (!cue || !state.active) return;

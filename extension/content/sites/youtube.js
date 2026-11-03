@@ -106,6 +106,10 @@ export const youtube = {
     };
   },
 
+  /** The track the player's CC menu has on, or null when captions are off. */
+  currentTrack: async () =>
+    /** @type {{languageCode: string, kind: string, translated: boolean} | null} */ (await callPage("currentTrack").catch(() => null)),
+
   /** Seek and wait until the frame is there. */
   async seek(ms) {
     const video = youtube.getVideo();
