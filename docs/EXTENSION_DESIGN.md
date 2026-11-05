@@ -563,12 +563,30 @@ Steps:
 
 Done when: a YouTube video (with a mid-roll ad) and a Netflix episode each give one MP3 that plays start to end in a normal player (VLC, phone), with no silence longer than about 1.5 s, no ad audio, and a length close to the estimate.
 
+### Milestone 8: page reader (hover lookup on any web page)
+
+Hold Shift (Shift/Alt/Ctrl in Options) and hover written text on any page: popup with the dictionary entry and the Anki status; "Make card" sends the sentence and the word to the side panel. Switched on from the toolbar popup. Never on the subtitle bar, the sites' captions or the side panel.
+
+1. **M8a, switch and worker**
+   - `shared/settings.js` `reader: {enabled: false, modifier: "shift"}`. Popup row "Page reader" and Options section: switching on asks for `http://*/*` + `https://*/*` (already optional host permissions) straight from the click.
+   - `background/reader.js`: `syncReaderScript` registers `content/reader-main.js` with `chrome.scripting.registerContentScripts` (new `scripting` permission) while on and allowed, else unregisters; serialized. Run on settings change, startup, install; `permissions.onRemoved` switches it off. `READER_SYNC` from the popup also injects it into the current tab.
+   - `READER_LOOKUP {sentence, offset, pageLang}`: `pickLang`, `lookupAt`, status with `bestEntry` from the known list, small cache cleared on settings, dictionaries or known words changing.
+2. **M8b, content script**
+   - `content/reader.js`: caret from point (`caretPositionFromPoint`, `caretRangeFromPoint` before Chrome 128) checked against the character's box; nearest block's text (furigana `<rt>` skipped, `<br>` = line break, at most 1200 characters each way); `collapseSpaces` and `sentenceAround` (`shared/reader.js`, pure); the match is marked on the page with the CSS Custom Highlight API (no DOM change).
+   - Excluded: `#cyber-miner-overlay`, `#cyber-miner-reader`, `.ytp-caption-window-container`, `.caption-window`, `.player-timedtext`, form fields, editable text.
+   - `content/reader-popup.js` + `styles/reader.css`: Shadow DOM popup, theme tokens on the host, badge, up to 4 entries, Make card.
+3. **M8c, card**: Make card sends `OPEN_SIDEBAR` first (user gesture), then `DRAFT_START` with `meta.audio.state = "none"` and `meta.pick`. The side panel hides picture, audio and clip tools for such a draft.
+4. **M8d, tests and docs**: `tests/reader.test.js` (`sentenceAround`, `pickLang`, `collapseSpaces`), this section, DECISIONS, READMEs.
+
+Done when: on a Japanese and an Italian page Shift+hover shows the right entry and status, Make card fills the side panel and sends a card to Anki; nothing happens on YouTube subtitles, inputs or without the key.
+
 ## Hand test checklist (each release)
 
 - YouTube: manual ja subtitles; auto-generated only; no ja track (no tracking, overlay off); pre-roll and mid-roll ads; playlist next video; fullscreen; theater mode.
 - Netflix: Japanese episode with English subs; next-episode autoplay; title with image subtitles; fullscreen; screenshot on Windows (empty picture, no black image).
 - Anki closed when mining; tracker offline during a whole video; worker restarted mid-video (`chrome://serviceworker-internals`).
 - Condensed audio (M7): whole YouTube video with a mid-roll ad; whole Netflix episode (tab shared first, Netflix volume at full); save dialog opens in Downloads the first time and in the last folder after; Cancel halfway (no file, position restored); clicking a transcript line (dialog) and pressing A twice (stops); a click on the player's timeline is undone and the note flashes; the MP3 plays to the end in VLC and on a phone.
+- Page reader (M8): Shift+hover on a Japanese news page and an Italian page (entry, status badge, highlight); Make card fills the side panel without audio or picture and sends; YouTube description works, subtitle bar and captions do not; inputs and contenteditable do not; switching off in the popup stops it in open tabs; removing site access in chrome://extensions switches it off.
 - Popup: "Open Cyber Tracker" switches to an open tracker tab, else opens one; with no address it opens Options.
 
 ## Risks

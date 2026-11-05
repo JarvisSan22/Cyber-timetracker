@@ -4,13 +4,15 @@
 import * as anki from "./anki.js";
 import * as tracker from "./tracker.js";
 import { MSG, draftKey } from "../shared/messages.js";
-import { loadSettings, LANGUAGES } from "../shared/settings.js";
+import { loadSettings, saveSettings, LANGUAGES } from "../shared/settings.js";
 import { buildNote, localDate } from "../shared/card.js";
 import { loadPresets, resolveTheme } from "../shared/theme.js";
 import { createWatchService } from "./watch.js";
 import { captureTabFrame } from "./capture.js";
 import * as known from "./known.js";
 import { transcriptKey } from "../shared/transcript.js";
+import * as reader from "./reader.js";
+import { forgetInstalled } from "../shared/dictionary/index.js";
 
 const watch = createWatchService({ tracker, storage: chrome.storage.local, loadSettings });
 const IGNORED_KEY = "ignoredTabs"; // storage.session: tabs the user switched off in the popup
@@ -258,6 +260,16 @@ const handlers = {
     return known.marksFor(msg.lang, msg.sentence);
   },
 
+  async [MSG.READER_LOOKUP](msg) {
+    return reader.readerLookup(await loadSettings(), msg);
+  },
+
+  async [MSG.READER_SYNC](msg) {
+    const on = await reader.syncReaderScript(await loadSettings());
+    if (on && msg.tabId !== undefined) await reader.injectInto(msg.tabId);
+    return { on };
+  },
+
   async [MSG.KNOWN_DECKS]() {
     return anki.invoke((await loadSettings()).anki, "deckNames");
   },
@@ -400,7 +412,31 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+// Page reader: registered while switched on; settings, dictionaries or known words changing reset its cache.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "sync" && changes.settings) {
+    reader.forgetLookups();
+    loadSettings().then((s) => reader.syncReaderScript(s)).catch(() => {});
+  }
+  if (area === "local" && changes.dictsChanged) {
+    forgetInstalled();
+    reader.forgetLookups();
+  }
+  if (area === "local" && changes.knownWords) reader.forgetLookups();
+});
+// Site access taken away in chrome://extensions: switch the reader off so the popup shows it.
+chrome.permissions.onRemoved.addListener(async () => {
+  if (await reader.hasSiteAccess()) return;
+  const settings = await loadSettings();
+  if (settings.reader.enabled) {
+    settings.reader.enabled = false;
+    await saveSettings(settings);
+  }
+  await reader.syncReaderScript(settings);
+});
+
 chrome.runtime.onStartup.addListener(async () => {
+  loadSettings().then((s) => reader.syncReaderScript(s)).catch(() => {});
   loadSettings().then((s) => known.refreshIfStale(s));
   setPending(await pendingCards());
   watch.endLeftovers(); // sessions still open when the browser closed end at their last heartbeat
@@ -410,5 +446,6 @@ chrome.runtime.onInstalled.addListener((details) => {
   // A reload or update orphans the old content scripts: their sessions would never be stopped.
   watch.endLeftovers();
   loadSettings().then((s) => known.refreshIfStale(s));
+  loadSettings().then((s) => reader.syncReaderScript(s)).catch(() => {});
   if (details.reason === "install") chrome.runtime.openOptionsPage();
 });

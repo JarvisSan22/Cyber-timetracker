@@ -39,6 +39,9 @@ export const MSG = /** @type {const} */ ({
   KNOWN_MARKS: "known-marks", // content -> worker: {lang, sentence} -> WordMark[] | null
   KNOWN_DECKS: "known-decks", // options -> worker: -> deck names
   KNOWN_FIELDS: "known-fields", // options -> worker: {deck} -> field names
+  // Page reader (M8): hover lookup on any web page
+  READER_LOOKUP: "reader-lookup", // content -> worker: {sentence, offset, pageLang} -> {lang, result, status, deck} | null
+  READER_SYNC: "reader-sync", // popup -> worker: register/unregister the reader script, inject into {tabId}
 });
 
 /** storage.session key of a tab's draft. */

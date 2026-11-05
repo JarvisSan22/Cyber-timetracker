@@ -79,6 +79,12 @@ Grammar words (particles, articles, prepositions) stay plain. The look of each s
 - **Which decks**: the Cyber Miner decks always count. Add your other vocabulary decks in **Options > Known words** (deck, the field that holds the word, language).
 - **Refreshing**: the list is read from Anki hourly while Anki is open, and on "Refresh from Anki". A card you mine counts at once.
 
+### Page reader
+Hold **Shift** and hover written text on any web page (news, blogs, Wikipedia, a YouTube description) for a cyberpunk popup with the dictionary entry and the word's status in your Anki decks (same badge as the side panel). **Make card** opens the side panel with the sentence and the word already picked; the card has no audio or picture, and its Source is the page title with a link back to the page.
+- **Switch it on** in the toolbar popup ("Page reader") or in **Options > Page reader**. Chrome asks once for access to all sites; the key can be Shift, Alt or Ctrl.
+- **Not on** the subtitle bar, YouTube's or Netflix's captions, form fields or editable text. Esc, a click elsewhere or moving away without the key closes it.
+- **Language**: kana means Japanese, Latin letters Italian; kanji only follows the page's language, else the first of Japanese/Chinese in your languages. Needs the dictionaries.
+
 ### Netflix
 Works like YouTube:
 - **Subtitles**: Netflix lists every subtitle track for the episode; the extension downloads the target track and the English one directly. Furigana in Japanese Netflix subtitles is dropped from the sentence.
