@@ -325,11 +325,11 @@ def main() -> None:
         parser.error(f"unknown language {', '.join(unknown)} (choose from {', '.join(BUILDERS)})")
     OUT.mkdir(parents=True, exist_ok=True)
     manifest_path = OUT / "manifest.json"
-    manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
     for lang in langs:
         print(f"[{lang}]")
         manifest[lang] = BUILDERS[lang](args.force)
-        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Done. Reload Cyber Miner on chrome://extensions, then Options > Dictionaries > Import.")
 
 

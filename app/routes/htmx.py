@@ -5,6 +5,7 @@ Mutations that affect another part of the page also send an HX-Trigger event
 """
 
 import json
+import math
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
@@ -59,6 +60,14 @@ def _parse_local(value: str, tz) -> datetime | None:
     if not value:
         return None
     return datetime.fromisoformat(value).replace(tzinfo=tz).astimezone(timers.UTC)
+
+
+def _number(value: str) -> float:
+    """Form number; "inf" and "nan" raise ValueError like any other bad input."""
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(f"Not a number: {value}")
+    return number
 
 
 def _ids(values: list[str] | None) -> list[int]:
@@ -138,7 +147,7 @@ def add_past_session(
         start_dt = _parse_local(started_at, tz)
         end_dt = _parse_local(ended_at, tz)
         if end_dt is None and duration_min.strip():
-            end_dt = start_dt + timedelta(minutes=float(duration_min))
+            end_dt = start_dt + timedelta(minutes=_number(duration_min))
         if start_dt is None or end_dt is None:
             raise ValueError("Give a start and either an end or a duration")
         if end_dt > timers.utcnow() + timedelta(minutes=1):
@@ -204,7 +213,7 @@ def save_edit(
             title=title,
             started_at=changed(started_at, current.start_local),
             ended_at=changed(ended_at, current.end_local),
-            paused_sec=int(float(paused_min) * 60) if paused_min.strip() else None,
+            paused_sec=int(_number(paused_min) * 60) if paused_min.strip() else None,
             tag_ids=_ids(tag_ids),
             note=note,
         )
@@ -262,7 +271,7 @@ def _project_list(db: DBSession, **extra) -> HTMLResponse:
 
 def _goal(value: str) -> int | None:
     value = (value or "").strip()
-    return max(0, int(float(value))) if value else None
+    return max(0, int(_number(value))) if value else None
 
 
 @router.post("/projects", response_class=HTMLResponse)

@@ -20,7 +20,7 @@ const audioEl = /** @type {HTMLAudioElement} */ ($("audio"));
  * @property {number} draftId
  * @property {number} tabId
  * @property {import("../shared/card.js").CardDraft} draft
- * @property {{deck: string, audio: {state: string, seconds?: number, message?: string}, pick?: {start: number, end?: number},
+ * @property {{deck: string, audio: {state: string, seconds?: number, message?: string}, // state "none": card from page text pick?: {start: number, end?: number},
  *   lines?: {start_ms: number, end_ms: number, count: number}, clip?: {from: number, to: number, played?: [number, number]},
  *   textRev?: number, prefixAdded?: number}} meta
  */
@@ -144,6 +144,14 @@ function fillForm(record) {
 
 /** @param {DraftRecord} record */
 function showMedia({ draft, meta }) {
+  // A card from page text (M8 reader) has no picture, audio or subtitle lines to adjust.
+  const pageText = meta.audio.state === "none";
+  for (const el of [$("shot"), document.querySelector(".audio-row"), $("clip-tools")]) el.hidden = pageText;
+  if (pageText) {
+    $("shot-choices").hidden = true;
+    $("send").disabled = false;
+    return;
+  }
   const shot = $("shot");
   const picture = state.chosenPicture ?? draft.picture;
   const src = picture ? `data:image/jpeg;base64,${picture.data}` : "";

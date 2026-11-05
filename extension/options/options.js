@@ -384,3 +384,27 @@ action("known-refresh", "known-result", "Reading your decks from Anki…", async
   else if (!ankiDecks) result("known-result", "error", "Open Anki to pick decks and read your words.");
 })();
 
+
+// --- page reader (M8): switching it on needs access to every site, asked straight from the click ---
+
+const readerBox = /** @type {HTMLInputElement} */ ($("reader-enabled"));
+readerBox.checked = settings.reader.enabled;
+readerBox.addEventListener("change", async () => {
+  const want = readerBox.checked;
+  const granted = want ? await chrome.permissions.request({ origins: ["http://*/*", "https://*/*"] }).catch(() => false) : true;
+  if (!granted) {
+    readerBox.checked = false;
+    result("reader-result", "error", "Chrome access to all sites was not granted.");
+    return;
+  }
+  settings.reader.enabled = want;
+  await saveSettings(settings);
+  result("reader-result", "ok", want ? "On: reload open pages, or switch it on from the toolbar popup for the current tab." : "Off.");
+});
+chrome.storage.onChanged.addListener((changes, area) => {
+  // Switched in the toolbar popup, or turned off because site access was removed.
+  if (area !== "sync" || !changes.settings) return;
+  const enabled = Boolean(changes.settings.newValue?.reader?.enabled);
+  settings.reader.enabled = enabled;
+  readerBox.checked = enabled;
+});

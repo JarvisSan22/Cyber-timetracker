@@ -71,6 +71,12 @@ export const DEFAULTS = {
     /** @type {"blur" | "show" | "hide"} */
     translation: "blur",
   },
+  // Page reader (M8): hold the key and hover written text on any web page for a dictionary popup.
+  reader: {
+    enabled: false,
+    /** @type {"shift" | "alt" | "ctrl"} */
+    modifier: "shift",
+  },
 };
 
 /** @typedef {typeof DEFAULTS} Settings */

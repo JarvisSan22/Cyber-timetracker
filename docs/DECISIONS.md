@@ -236,6 +236,7 @@ Groundwork for Netflix with no change in behaviour on YouTube.
 - **Lines** (`shared/transcript.js` `transcriptRows`: index, start/end, the line as one sentence, the translation by overlap) are sent by the content script when the subtitles or the translation arrive (`transcript-set`), stored by the worker in `storage.session` as `transcript:<tabId>` (content scripts cannot use storage.session), removed on a new video and when the tab closes.
 - **Position and commands** over a port (`transcript`) the panel opens to the tab: the content script posts `{videoId, index, playing}` only when it changes (checked in the 100 ms tick); the panel sends `seek {index}` (to the line's start) and `mine {index}` (pause, seek 50 ms into the line, mine it; `mine()` takes `cueIndex`). A reloaded page drops the port; the panel connects again when new lines arrive.
 - **Following**: the current line is highlighted and scrolled to the middle while "Follow video" is on; a wheel or touch scroll in the list turns it off.
+- **Reload subs**: a button, not auto-following the player's CC menu (our own track switch and YouTube's caption choices would set each other off). It loads the track the player shows when it is in a target language; captions off redoes the automatic pick. Auto-pick prefers settings order when there is no asr track, so an Italian video with ja + it manual tracks starts on ja.
 - **Word colours** in the panel itself (it has the dictionaries and `knownWords`), for rows within 300 px of the screen (IntersectionObserver), one row at a time, same `markWords` and the same colour settings as the bar. Each row shows how many words are not in Anki; "Lines with new words" checks every row (progress in the header) and hides the rest.
 - **Netflix**: mining from the panel cannot show Chrome's "Share this tab" prompt (it needs a click in the page), so it works once the tab audio was shared from the video; otherwise the Card tab shows the usual message to click ⌬ on the video once.
 
@@ -261,3 +262,18 @@ Plan: [EXTENSION_DESIGN.md](EXTENSION_DESIGN.md), milestone 7.
 ## Cyber Miner popup: open Cyber Tracker
 
 - **Open Cyber Tracker** button in the popup: switches to a tab that already shows the tracker (`chrome.tabs.query` on the tracker address, which works with the tracker's host permission asked when the address is saved), else opens it in a new tab; with no address set it opens Options.
+
+## Cyber Miner M8: page reader
+
+Plan: [EXTENSION_DESIGN.md](EXTENSION_DESIGN.md), milestone 8.
+
+- **Shift + hover**, like Yomichan's default: plain hovering would pop up all the time while reading normally. The key can be Alt or Ctrl in Options. Pressing it with the pointer already on a word also looks up; Shift while typing in a field does not.
+- **One switch for all sites** (popup and Options) instead of a per-tab button: the reader is registered with `chrome.scripting.registerContentScripts` on `http(s)://*/*`, using the optional host permissions the extension already declared, asked once from the click. Needs the `scripting` permission (no install warning).
+- **Lookups in the worker**: the dictionaries are in the extension's IndexedDB, which a content script on a web page cannot open (it gets the page's origin). The worker picks the language, looks up and adds the Anki status; answers are cached and the cache is cleared when settings, dictionaries or the known list change.
+- **web_accessible_resources on all sites** for the reader's files, shared modules, CSS and fonts (the content script loads them with a dynamic import, like the YouTube one). Pages can tell the extension is installed; fine for personal use.
+- **Language from the text**: kana means Japanese, Latin letters Italian; kanji only follows `<html lang>`, else the first of Japanese/Chinese in the chosen languages.
+- **Sentence**: the nearest block's text with HTML line wraps as spaces (dropped between two CJK characters), `<br>` as a line break, furigana skipped, cut at `。！？!?…`, a newline, or a `.` before a space; at most 200 characters.
+- **Highlight with the CSS Custom Highlight API**, so the page's DOM is never changed (no wrapping spans that could break sites).
+- **No audio or picture** on these cards (user's choice): the draft carries `meta.audio.state = "none"`, and the side panel hides picture, audio and clip tools for it. On a YouTube page a card from the description replaces a video draft of the same tab.
+- Tested in headless Chromium with the fixture dictionary 2026-11-05 (Shift needed, `<b>` inside a sentence, HTML line wrap, inputs, captions and the overlay's shadow root excluded, draft content). Not yet tested by hand with the real side panel and Anki.
+

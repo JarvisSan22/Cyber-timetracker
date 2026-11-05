@@ -18,6 +18,7 @@ from app.models import Idea, MinedCard, Project, Session, SessionTag, Setting, T
 from app.services.timers import duration, tags_for
 
 EXPORT_VERSION = 1
+KEEP_BEFORE_IMPORT = 5  # before-import-*.db safety copies kept next to the database
 
 
 def _iso(dt: datetime | None) -> str | None:
@@ -109,6 +110,9 @@ def import_json(db: DBSession, data: dict) -> dict:
     # Keep the current data next to the database, so a wrong file can be undone by hand.
     safety = backup_copy(db)
     shutil.move(safety, config.database_path().with_name(f"before-import-{utcnow():%Y%m%d-%H%M%S}.db"))
+    # Keep only the newest few, so repeated imports never fill the Pi's SD card.
+    for old in sorted(config.database_path().parent.glob("before-import-*.db"))[:-KEEP_BEFORE_IMPORT]:
+        old.unlink(missing_ok=True)
     try:
         for model in (MinedCard, SessionTag, Session, Tag, Idea, Project, Setting):
             db.exec(delete(model))

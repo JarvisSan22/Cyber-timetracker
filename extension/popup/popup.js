@@ -146,3 +146,31 @@ loadSettings().then((settings) => {
     button.hidden = true;
   });
 });
+
+// --- page reader (M8) ---
+
+const READER_ORIGINS = ["http://*/*", "https://*/*"];
+const KEY_NAMES = { shift: "Shift", alt: "Alt", ctrl: "Ctrl" };
+
+/** @param {import("../shared/settings.js").Settings} settings @param {string} [note] */
+function showReader(settings, note) {
+  const on = settings.reader.enabled;
+  /** @type {HTMLInputElement} */ ($("reader-toggle")).checked = on;
+  $("reader-led").className = `led ${on ? "ok" : ""}`;
+  $("reader-detail").textContent = note ?? (on ? `On · hold ${KEY_NAMES[settings.reader.modifier] ?? "Shift"} + hover text` : "Off");
+}
+loadSettings().then((s) => showReader(s));
+
+$("reader-toggle").addEventListener("change", async (e) => {
+  const want = /** @type {HTMLInputElement} */ (e.target).checked;
+  // Straight from the click, no await first: request() needs the user gesture. It returns true at once
+  // when access was given before.
+  const granted = want ? await chrome.permissions.request({ origins: READER_ORIGINS }).catch(() => false) : true;
+  const settings = await loadSettings();
+  if (want && !granted) return showReader(settings, "Needs access to all sites to read pages");
+  settings.reader.enabled = want;
+  await saveSettings(settings);
+  showReader(settings);
+  // Registers the script for new pages and starts it in this tab now (no reload needed).
+  if (want) ask(MSG.READER_SYNC, { tabId: activeTabId ?? undefined }).catch(() => {});
+});

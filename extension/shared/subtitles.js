@@ -154,6 +154,17 @@ export function pickTargetTrack(tracks, targets, spokenLang = "") {
 }
 
 /**
+ * The video's track the player shows ("Reload subs"): same language code, asr or not.
+ * @param {Track[]} tracks
+ * @param {{languageCode: string, kind?: string}} shown
+ * @returns {Track | null}
+ */
+export function findTrack(tracks, shown) {
+  const asr = shown.kind === "asr";
+  return tracks.find((t) => t.languageCode === shown.languageCode && (t.kind === "asr") === asr) ?? null;
+}
+
+/**
  * URL for the translation track, built from the URL the player used for the primary track (it carries
  * the player's proof-of-origin token). A manual track in the translation language is used when there is
  * one; otherwise YouTube's auto-translate (tlang).

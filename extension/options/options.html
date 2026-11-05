@@ -106,6 +106,25 @@
     </section>
 
     <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
+      <h2>Page reader</h2>
+      <p class="note">Hold the key below and hover written text on any web page: a popup shows the dictionary entry and the
+        word's status in your Anki decks. <b>Make card</b> opens the side panel with the sentence and the word picked (no
+        audio or picture). Not on subtitles, form fields or editable text. Needs the dictionaries above and access to all
+        sites (Chrome asks when you switch it on). Also in the toolbar popup.</p>
+      <div class="check-row">
+        <label><input type="checkbox" id="reader-enabled"> Look up words on web pages</label>
+      </div>
+      <label>Hold while hovering
+        <select data-field="reader.modifier">
+          <option value="shift">Shift</option>
+          <option value="alt">Alt</option>
+          <option value="ctrl">Ctrl</option>
+        </select>
+      </label>
+      <p class="result" id="reader-result"></p>
+    </section>
+
+    <section class="panel aug-panel" data-augmented-ui="tl-clip br-clip border">
       <h2>Cards</h2>
       <div class="grid-2">
         <label>Audio padding before (ms) <input type="number" min="0" max="3000" step="50" data-field="cards.padBeforeMs"></label>

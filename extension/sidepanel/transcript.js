@@ -91,6 +91,7 @@ export function initTranscript({ onMine }) {
   // Scrolling by hand stops following the video until "Follow" is pressed again.
   for (const type of ["wheel", "touchmove"]) list.addEventListener(type, () => setFollow(false), { passive: true });
   $("t-follow").addEventListener("click", () => setFollow(true));
+  $("t-reload").addEventListener("click", () => send({ type: "reload" }));
   $("t-new-only").addEventListener("change", () => applyFilter());
 
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -244,7 +245,7 @@ function disconnect() {
   view.port = null;
 }
 
-/** @typedef {{type: "seek" | "mine", index: number, last?: number, stopCondense?: boolean}} Command */
+/** @typedef {{type: "seek" | "mine" | "reload", index?: number, last?: number, stopCondense?: boolean}} Command */
 
 /** Asked before each command is sent; false drops it (the condensed audio box asks to stop its recording). */
 /** @type {(msg: Command, tabId: number | null) => boolean} */
